@@ -3,7 +3,8 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.9+-blue.svg" alt="Python">
   <img src="https://img.shields.io/badge/FastAPI-0.100+-green.svg" alt="FastAPI">
-  <img src="https://img.shields.io/badge/scikit--learn-1.3+-orange.svg" alt="scikit-learn">
+  <img src="https://img.shields.io/badge/XGBoost-1.7+-red.svg" alt="XGBoost">
+  <img src="https://img.shields.io/badge/LightGBM-4.0+-purple.svg" alt="LightGBM">
   <img src="https://img.shields.io/badge/Docker-Ready-blue.svg" alt="Docker">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License">
 </p>
@@ -43,11 +44,19 @@ This CLV Prediction System uses machine learning to forecast customer lifetime v
 ## ✨ Features
 
 ### Machine Learning Pipeline
+- **XGBoost** - State-of-the-art gradient boosting with GPU support
+- **LightGBM** - Fast, distributed, high-performance ML
 - **Random Forest** - Robust predictions with feature importance
 - **Gradient Boosting** - Captures complex patterns
-- **Ensemble Model** - Weighted combination for best accuracy
-- **RFM Analysis** - Recency, Frequency, Monetary feature engineering
+- **Auto-Weighted Ensemble** - Optimal weights based on validation
 - **Model Registry** - Version control and model management
+
+### Advanced Feature Engineering (60+ Features)
+- **RFM Analysis** - Recency, Frequency, Monetary scoring
+- **Behavioral Features** - Purchase velocity, engagement, churn risk
+- **Temporal Features** - Seasonality, day-of-week, time thresholds
+- **Statistical Features** - Z-scores, percentiles, outlier detection
+- **Interaction Features** - Value×frequency, engagement×value composites
 
 ### Production Infrastructure
 - ⚙️ **Configuration Management** - Environment variables, JSON config
