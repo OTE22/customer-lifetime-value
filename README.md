@@ -4,6 +4,7 @@
   <img src="https://img.shields.io/badge/Python-3.9+-blue.svg" alt="Python">
   <img src="https://img.shields.io/badge/FastAPI-0.100+-green.svg" alt="FastAPI">
   <img src="https://img.shields.io/badge/scikit--learn-1.3+-orange.svg" alt="scikit-learn">
+  <img src="https://img.shields.io/badge/Docker-Ready-blue.svg" alt="Docker">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License">
 </p>
 
@@ -14,10 +15,18 @@
 <p align="center">
   <a href="#features">Features</a> •
   <a href="#quick-start">Quick Start</a> •
+  <a href="#docker">Docker</a> •
   <a href="#api-documentation">API Docs</a> •
-  <a href="#meta-ads-integration">Meta Ads</a> •
-  <a href="#model-performance">Performance</a>
+  <a href="#meta-ads-integration">Meta Ads</a>
 </p>
+
+---
+
+## 👤 Author
+
+**Ali Abbass (OTE22)**
+- GitHub: [@OTE22](https://github.com/OTE22)
+- Repository: [customer-lifetime-value](https://github.com/OTE22/customer-lifetime-value)
 
 ---
 
@@ -38,6 +47,15 @@ This CLV Prediction System uses machine learning to forecast customer lifetime v
 - **Gradient Boosting** - Captures complex patterns
 - **Ensemble Model** - Weighted combination for best accuracy
 - **RFM Analysis** - Recency, Frequency, Monetary feature engineering
+- **Model Registry** - Version control and model management
+
+### Production Infrastructure
+- ⚙️ **Configuration Management** - Environment variables, JSON config
+- 📝 **Structured Logging** - JSON format, rotating files, metrics
+- 🗄️ **Caching Layer** - LRU memory cache + Redis support
+- 🛡️ **Rate Limiting** - Token bucket algorithm protection
+- 🔐 **API Key Auth** - Optional authentication support
+- 🐳 **Docker Ready** - Multi-stage build, docker-compose
 
 ### Modern Dashboard
 - 📊 Real-time KPI visualization
@@ -51,68 +69,184 @@ This CLV Prediction System uses machine learning to forecast customer lifetime v
 - 🔄 Lookalike audience strategies
 - 📊 Campaign performance tracking
 
+---
+
 ## 🚀 Quick Start
 
-### Prerequisites
-- Python 3.9+
-- pip
+### Option 1: Setup Script (Recommended)
 
-### Installation
+**Windows:**
+```batch
+.\setup.bat
+```
+
+**Linux/Mac:**
+```bash
+chmod +x setup.sh
+./setup.sh
+```
+
+This will:
+1. Create a virtual environment
+2. Install all dependencies
+3. Create necessary directories
+4. Generate sample data
+
+### Option 2: Manual Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/clv-prediction.git
-cd clv-prediction
+git clone https://github.com/OTE22/customer-lifetime-value.git
+cd customer-lifetime-value
+
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+# Windows:
+venv\Scripts\activate
+# Linux/Mac:
+source venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
 
 # Generate sample data
-cd data
-python generate_data.py
-cd ..
+python data/generate_data.py
 
 # Start the API server
-python -m uvicorn backend.api:app --reload --port 8000
+python -m uvicorn backend.api_enhanced:app --reload --port 8000
 ```
 
-### Open the Dashboard
-
-Open `frontend/index.html` in your browser, or serve it:
+### Option 3: Install as Package
 
 ```bash
-# Using Python's built-in server
-cd frontend
-python -m http.server 3000
+# Basic install
+pip install -e .
+
+# With development tools
+pip install -e ".[dev]"
+
+# With Redis support
+pip install -e ".[redis]"
 ```
 
-Visit: http://localhost:3000
+---
+
+## 🐳 Docker
+
+### Quick Start with Docker Compose
+
+```bash
+# Production (API + Redis + Nginx Frontend)
+docker-compose up -d
+
+# Development (with hot reload)
+docker-compose --profile dev up api-dev
+
+# View logs
+docker-compose logs -f api
+
+# Stop all services
+docker-compose down
+```
+
+### Services
+
+| Service | Port | Description |
+|---------|------|-------------|
+| `api` | 8000 | FastAPI backend |
+| `redis` | 6379 | Cache (optional) |
+| `frontend` | 3000 | Nginx frontend |
+
+### Docker Commands
+
+```bash
+# Build image only
+docker build -t clv-prediction .
+
+# Run standalone container
+docker run -p 8000:8000 clv-prediction
+
+# Development build
+docker build --target development -t clv-prediction:dev .
+```
+
+---
 
 ## 📁 Project Structure
 
 ```
 clv/
-├── backend/
-│   ├── __init__.py           # Package initialization
-│   ├── data_processor.py     # Data loading & cleaning
-│   ├── feature_engineering.py # RFM & behavioral features
-│   ├── ml_models.py          # ML model training
-│   ├── clv_predictor.py      # Prediction pipeline
-│   ├── meta_ads_integration.py # Meta Ads optimization
-│   └── api.py                # FastAPI REST endpoints
-├── frontend/
-│   ├── index.html            # Dashboard UI
-│   ├── css/styles.css        # Premium styling
-│   └── js/app.js             # Interactive features
+├── backend/                    # Python API & ML
+│   ├── config.py              # Configuration management
+│   ├── logging_config.py      # Structured logging
+│   ├── exceptions.py          # Custom exceptions
+│   ├── cache.py               # LRU/Redis caching
+│   ├── schemas.py             # Pydantic validation
+│   ├── middleware.py          # Rate limiting, security
+│   ├── dependencies.py        # Dependency injection
+│   ├── data_processor.py      # Data cleaning
+│   ├── feature_engineering.py # RFM features
+│   ├── ml_models.py           # Base ML models
+│   ├── ml_models_enhanced.py  # Enhanced ML + registry
+│   ├── clv_predictor.py       # Prediction pipeline
+│   ├── meta_ads_integration.py# Meta Ads optimization
+│   ├── api.py                 # Basic API
+│   └── api_enhanced.py        # Production API
+├── frontend/                   # Dashboard UI
+│   ├── index.html
+│   ├── css/styles.css
+│   └── js/app.js
 ├── data/
-│   ├── generate_data.py      # Sample data generator
-│   └── customers.csv         # Customer dataset
-├── models/                   # Saved ML models
+│   ├── generate_data.py       # Data generator
+│   └── customers.csv          # Sample dataset
 ├── tests/
-│   └── test_clv.py           # Unit tests
-├── requirements.txt
+│   └── test_clv.py            # Unit tests
+├── Dockerfile                 # Multi-stage Docker
+├── docker-compose.yml         # Container orchestration
+├── nginx.conf                 # Frontend proxy
+├── pyproject.toml             # Modern Python config
+├── setup.py                   # Legacy packaging
+├── setup.bat                  # Windows setup
+├── setup.sh                   # Unix setup
+├── requirements.txt           # Dependencies
+├── .env.example               # Environment template
+├── CHANGELOG.md               # Version history
 └── README.md
 ```
+
+---
+
+## ⚙️ Configuration
+
+### Environment Variables
+
+Copy `.env.example` to `.env` and customize:
+
+```bash
+# Application
+CLV_ENVIRONMENT=production  # development, staging, production
+CLV_DEBUG=false
+CLV_SECRET_KEY=your-secret-key
+
+# API
+CLV_API_HOST=0.0.0.0
+CLV_API_PORT=8000
+CLV_API_WORKERS=4
+CLV_RATE_LIMIT=100
+
+# Cache
+CLV_CACHE_ENABLED=true
+CLV_CACHE_TYPE=memory  # memory, redis
+CLV_CACHE_TTL=3600
+
+# Logging
+CLV_LOG_LEVEL=INFO
+CLV_LOG_FILE=logs/clv_api.log
+```
+
+---
 
 ## 📊 API Documentation
 
@@ -121,19 +255,28 @@ clv/
 http://localhost:8000
 ```
 
+### Interactive Docs
+- **Swagger UI:** http://localhost:8000/api/docs
+- **ReDoc:** http://localhost:8000/api/redoc
+
 ### Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/health` | Health check |
-| GET | `/api/customers` | List customers with predictions |
+| GET | `/api/health` | Health check with component status |
+| GET | `/api/status` | Detailed status + cache stats |
+| GET | `/api/customers` | List customers with pagination |
 | GET | `/api/customers/{id}` | Get single customer |
 | POST | `/api/predict` | Predict CLV for new customer |
+| POST | `/api/predict/batch` | Batch predictions |
 | GET | `/api/segments` | Segment distribution |
 | GET | `/api/metrics` | Model performance metrics |
+| POST | `/api/model/train` | Train/retrain model |
 | GET | `/api/meta-ads/audiences` | Audience segments |
 | GET | `/api/meta-ads/budget-allocation` | Budget recommendations |
 | GET | `/api/dashboard/summary` | Dashboard data |
+| GET | `/api/cache/stats` | Cache statistics |
+| POST | `/api/cache/clear` | Clear cache |
 
 ### Example: Predict CLV
 
@@ -161,15 +304,17 @@ Response:
   "predicted_clv": 892.50,
   "segment": "High-CLV",
   "confidence": "High",
-  "recommended_cac": 267.75
+  "recommended_cac": 267.75,
+  "model_version": "2.0.0",
+  "cached": false
 }
 ```
+
+---
 
 ## 📱 Meta Ads Integration
 
 ### Budget Allocation (3:2:1 Rule)
-
-The system recommends budget allocation across customer segments:
 
 | Segment | Budget % | CAC Target | Strategy |
 |---------|----------|------------|----------|
@@ -177,11 +322,11 @@ The system recommends budget allocation across customer segments:
 | Growth-Potential | 35% | 30% of CLV | Conversion optimization |
 | Low-CLV | 15% | 30% of CLV | Cost caps, testing only |
 
-### Lookalike Recommendations
-
 ```bash
 curl "http://localhost:8000/api/meta-ads/budget-allocation?total_budget=10000"
 ```
+
+---
 
 ## 📈 Model Performance
 
@@ -191,54 +336,22 @@ curl "http://localhost:8000/api/meta-ads/budget-allocation?total_budget=10000"
 | Gradient Boosting | $135 | $185 | 0.75 |
 | **Ensemble** | **$128** | **$176** | **0.78** |
 
-### Top Predictive Features
-
-1. `total_spent` - Historical spending
-2. `total_orders` - Purchase frequency
-3. `email_engagement_rate` - Customer engagement
-4. `days_since_last_purchase` - Recency
-5. `avg_order_value` - Transaction size
+---
 
 ## 🧪 Testing
 
 ```bash
 # Run all tests
-python -m pytest tests/ -v
+pytest tests/ -v
 
-# Run with coverage
-python -m pytest tests/ --cov=backend --cov-report=html
+# With coverage
+pytest tests/ --cov=backend --cov-report=html
+
+# Async tests
+pytest tests/ --asyncio-mode=auto
 ```
 
-## 📝 Dataset Schema
-
-The system expects customer data with these fields:
-
-| Field | Type | Description |
-|-------|------|-------------|
-| customer_id | string | Unique identifier |
-| first_purchase_date | date | First purchase timestamp |
-| last_purchase_date | date | Most recent purchase |
-| total_orders | int | Number of purchases |
-| total_spent | float | Cumulative revenue |
-| avg_order_value | float | Average order size |
-| acquisition_source | string | Meta Ads, Google, Email, etc. |
-| campaign_type | string | Prospecting, Retargeting, Brand |
-| email_engagement_rate | float | 0-1 engagement score |
-| return_rate | float | Product return percentage |
-
-## 🛠️ Configuration
-
-Environment variables (optional):
-
-```bash
-# API Configuration
-API_HOST=0.0.0.0
-API_PORT=8000
-
-# Data paths
-DATA_PATH=data/customers.csv
-MODEL_DIR=models/
-```
+---
 
 ## 🤝 Contributing
 
@@ -248,18 +361,14 @@ MODEL_DIR=models/
 4. Push to branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
+---
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
-
-- Inspired by research on CLV prediction in e-commerce
-- Built with FastAPI, scikit-learn, and Chart.js
-- Special thanks to the open-source community
-
 ---
 
 <p align="center">
-  Made with ❤️ for e-commerce businesses
+  Made with ❤️ by <strong>Ali Abbass (OTE22)</strong>
 </p>
