@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Customer Lifetime Value Prediction Dashboard - ML-powered CLV analytics for e-commerce">
+    <title>CLV Prediction Dashboard</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <div class="logo-icon">📊</div>
+                <span class="logo-text">CLV Predictor</span>
+            </div>
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active" data-section="dashboard">
+                    <span class="nav-icon">🏠</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-item" data-section="customers">
+                    <span class="nav-icon">👥</span>
+                    <span>Customers</span>
+                </a>
+                <a href="#" class="nav-item" data-section="segments">
+                    <span class="nav-icon">📈</span>
+                    <span>Segments</span>
+                </a>
+                <a href="#" class="nav-item" data-section="meta-ads">
+                    <span class="nav-icon">📱</span>
+                    <span>Meta Ads</span>
+                </a>
+                <a href="#" class="nav-item" data-section="predictions">
+                    <span class="nav-icon">🔮</span>
+                    <span>Predict CLV</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="api-status">
+                    <span class="status-dot" id="apiStatusDot"></span>
+                    <span id="apiStatusText">Checking API...</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <div class="header-left">
+                    <h1 id="pageTitle">Dashboard</h1>
+                    <p class="header-subtitle">Customer Lifetime Value Analytics</p>
+                </div>
+                <div class="header-right">
+                    <div class="search-box">
+                        <input type="text" placeholder="Search customers..." id="searchInput">
+                    </div>
+                    <button class="refresh-btn" id="refreshBtn" title="Refresh Data">🔄</button>
+                </div>
+            </header>
+
+            <!-- Dashboard Section -->
+            <section id="dashboard-section" class="content-section active">
+                <!-- KPI Cards -->
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-icon">👥</div>
+                        <div class="kpi-content">
+                            <span class="kpi-label">Total Customers</span>
+                            <span class="kpi-value" id="totalCustomers">-</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon">💰</div>
+                        <div class="kpi-content">
+                            <span class="kpi-label">Average CLV</span>
+                            <span class="kpi-value" id="avgClv">-</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card highlight">
+                        <div class="kpi-icon">⭐</div>
+                        <div class="kpi-content">
+                            <span class="kpi-label">High-CLV Rate</span>
+                            <span class="kpi-value" id="highClvRate">-</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon">📊</div>
+                        <div class="kpi-content">
+                            <span class="kpi-label">Total Value</span>
+                            <span class="kpi-value" id="totalValue">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="charts-row">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>CLV Distribution</h3>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="clvDistributionChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Customer Segments</h3>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="segmentChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Second Charts Row -->
+                <div class="charts-row">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Acquisition Sources</h3>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="acquisitionChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card wide">
+                        <div class="chart-header">
+                            <h3>Top Customers</h3>
+                        </div>
+                        <div class="chart-body">
+                            <table class="data-table" id="topCustomersTable">
+                                <thead>
+                                    <tr>
+                                        <th>Customer ID</th>
+                                        <th>Predicted CLV</th>
+                                        <th>Segment</th>
+                                        <th>Orders</th>
+                                        <th>Source</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Customers Section -->
+            <section id="customers-section" class="content-section">
+                <div class="section-header">
+                    <h2>Customer Directory</h2>
+                    <div class="filter-controls">
+                        <select id="segmentFilter">
+                            <option value="">All Segments</option>
+                            <option value="High-CLV">High-CLV</option>
+                            <option value="Growth-Potential">Growth-Potential</option>
+                            <option value="Low-CLV">Low-CLV</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="data-table" id="customersTable">
+                        <thead>
+                            <tr>
+                                <th>Customer ID</th>
+                                <th>Total Spent</th>
+                                <th>Predicted CLV</th>
+                                <th>Orders</th>
+                                <th>Segment</th>
+                                <th>Source</th>
+                                <th>Engagement</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div class="pagination">
+                    <button id="prevPage" class="pagination-btn">← Previous</button>
+                    <span id="pageInfo">Page 1</span>
+                    <button id="nextPage" class="pagination-btn">Next →</button>
+                </div>
+            </section>
+
+            <!-- Segments Section -->
+            <section id="segments-section" class="content-section">
+                <div class="section-header">
+                    <h2>Customer Segmentation Analysis</h2>
+                </div>
+                <div class="segments-grid">
+                    <div class="segment-card high-clv">
+                        <div class="segment-header">
+                            <h3>🌟 High-CLV</h3>
+                            <span class="segment-badge">Champions</span>
+                        </div>
+                        <div class="segment-stats">
+                            <div class="stat">
+                                <span class="stat-value" id="highClvCount">-</span>
+                                <span class="stat-label">Customers</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value" id="highClvAvg">-</span>
+                                <span class="stat-label">Avg CLV</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value" id="highClvTotal">-</span>
+                                <span class="stat-label">Total Value</span>
+                            </div>
+                        </div>
+                        <div class="segment-recommendation">
+                            <strong>Strategy:</strong> Premium targeting, lookalike audiences, highest budget allocation
+                        </div>
+                    </div>
+                    <div class="segment-card growth">
+                        <div class="segment-header">
+                            <h3>📈 Growth-Potential</h3>
+                            <span class="segment-badge">Rising Stars</span>
+                        </div>
+                        <div class="segment-stats">
+                            <div class="stat">
+                                <span class="stat-value" id="growthCount">-</span>
+                                <span class="stat-label">Customers</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value" id="growthAvg">-</span>
+                                <span class="stat-label">Avg CLV</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value" id="growthTotal">-</span>
+                                <span class="stat-label">Total Value</span>
+                            </div>
+                        </div>
+                        <div class="segment-recommendation">
+                            <strong>Strategy:</strong> Nurture campaigns, upsell opportunities, engagement focus
+                        </div>
+                    </div>
+                    <div class="segment-card low-clv">
+                        <div class="segment-header">
+                            <h3>📉 Low-CLV</h3>
+                            <span class="segment-badge">At Risk</span>
+                        </div>
+                        <div class="segment-stats">
+                            <div class="stat">
+                                <span class="stat-value" id="lowClvCount">-</span>
+                                <span class="stat-label">Customers</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value" id="lowClvAvg">-</span>
+                                <span class="stat-label">Avg CLV</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value" id="lowClvTotal">-</span>
+                                <span class="stat-label">Total Value</span>
+                            </div>
+                        </div>
+                        <div class="segment-recommendation">
+                            <strong>Strategy:</strong> Cost-efficient retargeting, discount offers, minimal acquisition spend
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-card" style="margin-top: 2rem;">
+                    <div class="chart-header">
+                        <h3>Feature Importance</h3>
+                        <p class="chart-subtitle">Top factors driving CLV predictions</p>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="featureImportanceChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Meta Ads Section -->
+            <section id="meta-ads-section" class="content-section">
+                <div class="section-header">
+                    <h2>Meta Ads Optimization</h2>
+                    <div class="budget-input">
+                        <label for="budgetInput">Monthly Budget: $</label>
+                        <input type="number" id="budgetInput" value="10000" min="100" step="100">
+                        <button id="calculateBudget" class="btn-primary">Calculate</button>
+                    </div>
+                </div>
+                
+                <div class="budget-allocation">
+                    <h3>Budget Allocation (3:2:1 Rule)</h3>
+                    <div class="allocation-grid">
+                        <div class="allocation-card high-clv">
+                            <div class="allocation-header">
+                                <span class="allocation-label">High-CLV</span>
+                                <span class="allocation-percent">50%</span>
+                            </div>
+                            <div class="allocation-amount" id="highClvBudget">$5,000</div>
+                            <div class="allocation-details">
+                                <p>Expected Acquisitions: <span id="highClvAcq">-</span></p>
+                                <p>Expected ROAS: <span id="highClvRoas">-</span></p>
+                            </div>
+                        </div>
+                        <div class="allocation-card growth">
+                            <div class="allocation-header">
+                                <span class="allocation-label">Growth-Potential</span>
+                                <span class="allocation-percent">35%</span>
+                            </div>
+                            <div class="allocation-amount" id="growthBudget">$3,500</div>
+                            <div class="allocation-details">
+                                <p>Expected Acquisitions: <span id="growthAcq">-</span></p>
+                                <p>Expected ROAS: <span id="growthRoas">-</span></p>
+                            </div>
+                        </div>
+                        <div class="allocation-card low-clv">
+                            <div class="allocation-header">
+                                <span class="allocation-label">Low-CLV</span>
+                                <span class="allocation-percent">15%</span>
+                            </div>
+                            <div class="allocation-amount" id="lowClvBudget">$1,500</div>
+                            <div class="allocation-details">
+                                <p>Expected Acquisitions: <span id="lowClvAcq">-</span></p>
+                                <p>Expected ROAS: <span id="lowClvRoas">-</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="charts-row">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Budget Allocation</h3>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="budgetChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Lookalike Recommendations</h3>
+                        </div>
+                        <div class="lookalike-recommendations" id="lookalikeRecs">
+                            <div class="lookalike-item">
+                                <h4>🎯 Prospecting</h4>
+                                <p>1% Lookalike from High-CLV customers</p>
+                                <span class="priority-badge high">Highest Priority</span>
+                            </div>
+                            <div class="lookalike-item">
+                                <h4>📊 Expansion</h4>
+                                <p>2-3% Lookalike for broader reach</p>
+                                <span class="priority-badge medium">Medium Priority</span>
+                            </div>
+                            <div class="lookalike-item">
+                                <h4>🧪 Testing</h4>
+                                <p>3-5% Lookalike for new markets</p>
+                                <span class="priority-badge low">Lower Priority</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Predictions Section -->
+            <section id="predictions-section" class="content-section">
+                <div class="section-header">
+                    <h2>Predict Customer Lifetime Value</h2>
+                </div>
+                <div class="prediction-form-container">
+                    <form id="predictionForm" class="prediction-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="totalOrders">Total Orders</label>
+                                <input type="number" id="totalOrders" min="1" value="3" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="totalSpent">Total Spent ($)</label>
+                                <input type="number" id="totalSpent" min="0" step="0.01" value="250" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="avgOrderValue">Avg Order Value ($)</label>
+                                <input type="number" id="avgOrderValue" min="0" step="0.01" value="83.33" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="daysSinceFirst">Days Since First Purchase</label>
+                                <input type="number" id="daysSinceFirst" min="0" value="180" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="daysSinceLast">Days Since Last Purchase</label>
+                                <input type="number" id="daysSinceLast" min="0" value="15" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="numCategories">Product Categories</label>
+                                <input type="number" id="numCategories" min="1" max="10" value="2" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="acquisitionSource">Acquisition Source</label>
+                                <select id="acquisitionSource" required>
+                                    <option value="Meta Ads">Meta Ads</option>
+                                    <option value="Google Ads">Google Ads</option>
+                                    <option value="Email">Email</option>
+                                    <option value="Direct">Direct</option>
+                                    <option value="Organic">Organic</option>
+                                    <option value="Referral">Referral</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="campaignType">Campaign Type</label>
+                                <select id="campaignType">
+                                    <option value="Prospecting">Prospecting</option>
+                                    <option value="Retargeting">Retargeting</option>
+                                    <option value="Brand">Brand</option>
+                                    <option value="None">None</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="acquisitionCost">Acquisition Cost ($)</label>
+                                <input type="number" id="acquisitionCost" min="0" step="0.01" value="35" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="emailEngagement">Email Engagement Rate (0-1)</label>
+                                <input type="number" id="emailEngagement" min="0" max="1" step="0.01" value="0.45" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="returnRate">Return Rate (0-1)</label>
+                                <input type="number" id="returnRate" min="0" max="1" step="0.01" value="0.08" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-primary btn-large">🔮 Predict CLV</button>
+                    </form>
+                    
+                    <div id="predictionResult" class="prediction-result hidden">
+                        <h3>Prediction Result</h3>
+                        <div class="result-grid">
+                            <div class="result-item">
+                                <span class="result-label">Predicted CLV</span>
+                                <span class="result-value" id="resultClv">$0</span>
+                            </div>
+                            <div class="result-item">
+                                <span class="result-label">Customer Segment</span>
+                                <span class="result-value segment-badge" id="resultSegment">-</span>
+                            </div>
+                            <div class="result-item">
+                                <span class="result-label">Confidence</span>
+                                <span class="result-value" id="resultConfidence">-</span>
+                            </div>
+                            <div class="result-item">
+                                <span class="result-label">Recommended CAC</span>
+                                <span class="result-value" id="resultCac">$0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
