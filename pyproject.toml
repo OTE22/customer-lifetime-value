@@ -1,0 +1,165 @@
+# =============================================================================
+# CLV Prediction System - Project Configuration
+# Author: Ali Abbass (OTE22)
+# =============================================================================
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "clv-prediction-system"
+version = "2.0.0"
+description = "Production-ready Customer Lifetime Value Prediction System with ML and API"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+authors = [
+    {name = "Ali Abbass", email = "ali.abbass@ote22.dev"}
+]
+maintainers = [
+    {name = "Ali Abbass (OTE22)", email = "ali.abbass@ote22.dev"}
+]
+keywords = [
+    "machine-learning",
+    "customer-lifetime-value",
+    "clv",
+    "prediction",
+    "e-commerce",
+    "fastapi",
+    "meta-ads",
+    "marketing",
+    "analytics"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Web Environment",
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+    "Typing :: Typed"
+]
+
+dependencies = [
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+    "scikit-learn>=1.3.0",
+    "fastapi>=0.100.0",
+    "uvicorn[standard]>=0.23.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "python-multipart>=0.0.6",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.21.0",
+    "httpx>=0.24.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "flake8>=6.0.0",
+    "mypy>=1.4.0",
+    "pre-commit>=3.3.0",
+]
+redis = [
+    "redis>=4.5.0",
+]
+all = [
+    "clv-prediction-system[dev,redis]",
+]
+
+[project.urls]
+Homepage = "https://github.com/OTE22/customer-lifetime-value"
+Documentation = "https://github.com/OTE22/customer-lifetime-value#readme"
+Repository = "https://github.com/OTE22/customer-lifetime-value.git"
+Issues = "https://github.com/OTE22/customer-lifetime-value/issues"
+Changelog = "https://github.com/OTE22/customer-lifetime-value/blob/main/CHANGELOG.md"
+
+[project.scripts]
+clv-api = "backend.api_enhanced:main"
+clv-train = "backend.clv_predictor:train_cli"
+
+[tool.setuptools]
+packages = ["backend"]
+package-dir = {"" = "."}
+
+[tool.setuptools.package-data]
+backend = ["*.json", "*.yaml"]
+
+# =============================================================================
+# Tool Configurations
+# =============================================================================
+
+[tool.black]
+line-length = 100
+target-version = ["py39", "py310", "py311", "py312"]
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | __pycache__
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+known_first_party = ["backend"]
+skip = [".venv", "venv", "build", "dist"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+exclude = ["tests", "build", "dist", ".venv"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --strict-markers"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks integration tests",
+]
+
+[tool.coverage.run]
+source = ["backend"]
+branch = true
+omit = ["tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+show_missing = true

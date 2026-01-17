@@ -1,0 +1,125 @@
+# =============================================================================
+# CLV Prediction System - Docker Compose
+# Author: Ali Abbass (OTE22)
+# =============================================================================
+
+version: "3.9"
+
+services:
+  # ===========================================================================
+  # CLV API Service
+  # ===========================================================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: clv-api
+    restart: unless-stopped
+    ports:
+      - "${CLV_API_PORT:-8000}:8000"
+    environment:
+      - CLV_ENVIRONMENT=${CLV_ENVIRONMENT:-production}
+      - CLV_DEBUG=${CLV_DEBUG:-false}
+      - CLV_SECRET_KEY=${CLV_SECRET_KEY:-change-me-in-production}
+      - CLV_API_HOST=0.0.0.0
+      - CLV_API_PORT=8000
+      - CLV_API_WORKERS=${CLV_API_WORKERS:-4}
+      - CLV_RATE_LIMIT=${CLV_RATE_LIMIT:-100}
+      - CLV_CACHE_ENABLED=${CLV_CACHE_ENABLED:-true}
+      - CLV_CACHE_TYPE=${CLV_CACHE_TYPE:-memory}
+      - CLV_CACHE_HOST=redis
+      - CLV_CACHE_PORT=6379
+      - CLV_LOG_LEVEL=${CLV_LOG_LEVEL:-INFO}
+      - CLV_DATA_DIR=/app/data
+      - CLV_MODEL_DIR=/app/models
+    volumes:
+      - ./data:/app/data:ro
+      - ./models:/app/models
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - clv-network
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ===========================================================================
+  # Redis Cache (Optional)
+  # ===========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: clv-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - clv-network
+
+  # ===========================================================================
+  # Frontend (Nginx)
+  # ===========================================================================
+  frontend:
+    image: nginx:alpine
+    container_name: clv-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - api
+    networks:
+      - clv-network
+
+# =============================================================================
+# Development Configuration
+# =============================================================================
+  api-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: clv-api-dev
+    ports:
+      - "${CLV_API_PORT:-8000}:8000"
+    environment:
+      - CLV_ENVIRONMENT=development
+      - CLV_DEBUG=true
+      - CLV_LOG_LEVEL=DEBUG
+      - CLV_CACHE_TYPE=memory
+    volumes:
+      - .:/app
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+    networks:
+      - clv-network
+    profiles:
+      - dev
+
+# =============================================================================
+# Networks & Volumes
+# =============================================================================
+networks:
+  clv-network:
+    driver: bridge
+    name: clv-network
+
+volumes:
+  redis-data:
+    name: clv-redis-data

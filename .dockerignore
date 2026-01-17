@@ -1,0 +1,58 @@
+# Docker-specific ignores
+**/.git
+**/.gitignore
+**/.vscode
+**/.idea
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+*.egg-info
+.eggs
+dist
+build
+
+# Virtual environments
+venv
+.venv
+env
+.env
+
+# Test files
+.pytest_cache
+.coverage
+htmlcov
+.tox
+.nox
+
+# Documentation
+docs/_build
+*.md
+!README.md
+
+# Development
+.mypy_cache
+.ruff_cache
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Local config
+.env.local
+*.local
+
+# Models (built at runtime)
+models/*.pkl
+models/*.joblib
+
+# Logs
+logs/*
+!logs/.gitkeep
