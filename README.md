@@ -15,6 +15,10 @@
   <strong>Production-ready ML system for predicting customer lifetime value in e-commerce</strong>
 </p>
 
+<p align="center">
+  <img src="DEMO_AI_CLTV_ANALYZER.gif" alt="CLV Prediction System Demo" width="800">
+</p>
+
 ---
 
 ## 📑 Table of Contents
