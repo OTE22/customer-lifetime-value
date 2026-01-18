@@ -1,99 +1,36 @@
-# Customer Lifetime Value (CLV) Prediction System
+# 🎯 Customer Lifetime Value (CLV) Prediction System
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.9+-blue.svg" alt="Python">
   <img src="https://img.shields.io/badge/FastAPI-0.100+-green.svg" alt="FastAPI">
   <img src="https://img.shields.io/badge/XGBoost-1.7+-red.svg" alt="XGBoost">
-  <img src="https://img.shields.io/badge/LightGBM-4.0+-purple.svg" alt="LightGBM">
   <img src="https://img.shields.io/badge/Docker-Ready-blue.svg" alt="Docker">
   <img src="https://img.shields.io/badge/MLflow-2.10+-orange.svg" alt="MLflow">
   <img src="https://img.shields.io/badge/DVC-3.30+-9cf.svg" alt="DVC">
-  <img src="https://img.shields.io/badge/GitHub_Actions-CI/CD-2088FF.svg" alt="GitHub Actions">
   <img src="https://img.shields.io/badge/AWS-EC2_Ready-FF9900.svg" alt="AWS">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License">
 </p>
 
 <p align="center">
-  <strong>🚀 Production-ready machine learning system for predicting customer lifetime value in e-commerce</strong>
-</p>
-
-<p align="center">
-  <a href="#features">Features</a> •
-  <a href="#quick-start">Quick Start</a> •
-  <a href="#mlops">MLOps</a> •
-  <a href="#docker">Docker</a> •
-  <a href="#api-documentation">API Docs</a> •
-  <a href="#deployment">Deployment</a>
+  <strong>Production-ready ML system for predicting customer lifetime value in e-commerce</strong>
 </p>
 
 ---
 
-## 👤 Author
+## 📑 Table of Contents
 
-**Ali Abbass (OTE22)**
-- GitHub: [@OTE22](https://github.com/OTE22)
-- Repository: [customer-lifetime-value](https://github.com/OTE22/customer-lifetime-value)
-
----
-
-## 🎯 Overview
-
-This CLV Prediction System uses machine learning to forecast customer lifetime value from early behavioral patterns. Instead of waiting months to identify your best customers, predict their value within days of their first purchase.
-
-**Key Benefits:**
-- 📈 **25-40% ROAS improvement** through CLV-optimized ad spend
-- 🎯 **Better customer acquisition** - spend more on high-value prospects
-- 💰 **Automated budget allocation** based on the 3:2:1 rule
-- 🔮 **Early identification** of High-CLV customers
-
-## ✨ Features
-
-### Machine Learning Pipeline
-- **XGBoost** - State-of-the-art gradient boosting with GPU support
-- **LightGBM** - Fast, distributed, high-performance ML
-- **Random Forest** - Robust predictions with feature importance
-- **Gradient Boosting** - Captures complex patterns
-- **Auto-Weighted Ensemble** - Optimal weights based on validation
-- **Model Registry** - Version control and model management
-
-### Advanced Feature Engineering (80+ Features)
-- **RFM Analysis** - Recency, Frequency, Monetary scoring with multiple methods
-- **Behavioral Features** - Purchase velocity, engagement, churn risk
-- **Temporal Features** - Seasonality, day-of-week, time thresholds
-- **Statistical Features** - Z-scores, percentiles, outlier detection
-- **Interaction Features** - Source×category, campaign×value, time×behavior
-- **Holiday Proximity** - Days to major shopping holidays (Black Friday, Christmas, etc.)
-
-### Prediction Confidence
-- **Uncertainty Estimation** - Model ensemble variance analysis
-- **Confidence Intervals** - 90%, 95%, 99% prediction bounds
-- **Temporal Validation** - Time-based train/val/test split (70/15/15)
-
-### Production Infrastructure
-- ⚙️ **Configuration Management** - Environment variables, JSON config
-- 📝 **Structured Logging** - JSON format, rotating files, metrics
-- 🗄️ **Caching Layer** - LRU memory cache + Redis support
-- 🛡️ **Rate Limiting** - Token bucket algorithm protection
-- 🔐 **API Key Auth** - Optional authentication support
-- 🐳 **Docker Ready** - Multi-stage build, docker-compose
-
-### MLOps & CI/CD
-- 📊 **MLflow** - Experiment tracking, model registry, artifact storage
-- 📦 **DVC** - Data version control with S3 remote storage
-- 🔄 **GitHub Actions** - Automated CI/CD pipeline
-- ☁️ **AWS EC2** - Production deployment with Nginx
-
-### Modern Dashboard
-- 📊 Real-time KPI visualization
-- 📈 Interactive Chart.js graphs
-- 🎨 Premium dark theme with glassmorphism
-- 📱 Fully responsive design
-
-### Meta Ads Integration
-- 🎯 Automatic audience segmentation
-- 💵 Budget allocation recommendations
-- 🔄 Lookalike audience strategies
-- 📊 Campaign performance tracking
+| Section | Description |
+|---------|-------------|
+| [🚀 Quick Start](#-quick-start) | Get running in 2 minutes |
+| [✨ Features](#-features) | What this system does |
+| [📡 API Reference](#-api-reference) | All endpoints with examples |
+| [🐳 Docker](#-docker) | Container deployment |
+| [🔬 MLOps](#-mlops) | MLflow, DVC, CI/CD setup |
+| [☁️ AWS Deployment](#-aws-deployment) | Production deployment |
+| [🎯 Meta Ads](#-meta-ads-integration) | Budget optimization |
+| [⚙️ Configuration](#-configuration) | All environment variables |
+| [🧪 Testing](#-testing) | Run tests |
+| [📁 Project Structure](#-project-structure) | File organization |
 
 ---
 
@@ -103,35 +40,27 @@ This CLV Prediction System uses machine learning to forecast customer lifetime v
 
 **Windows:**
 ```batch
+git clone https://github.com/OTE22/customer-lifetime-value.git
+cd customer-lifetime-value
 .\setup.bat
 ```
 
 **Linux/Mac:**
 ```bash
-chmod +x setup.sh
-./setup.sh
-```
-
-This will:
-1. Create a virtual environment
-2. Install all dependencies
-3. Create necessary directories
-4. Generate sample data
-
-### Option 2: Manual Installation
-
-```bash
-# Clone the repository
 git clone https://github.com/OTE22/customer-lifetime-value.git
 cd customer-lifetime-value
+chmod +x setup.sh && ./setup.sh
+```
 
+### Option 2: Manual Setup
+
+```bash
 # Create virtual environment
 python -m venv venv
 
-# Activate virtual environment
-# Windows:
+# Activate (Windows)
 venv\Scripts\activate
-# Linux/Mac:
+# Activate (Linux/Mac)
 source venv/bin/activate
 
 # Install dependencies
@@ -140,281 +69,80 @@ pip install -r requirements.txt
 # Generate sample data
 python data/generate_data.py
 
-# Start the API server
-python -m uvicorn backend.api_enhanced:app --reload --port 8000
+# Start API server
+python -m uvicorn backend.api:app --reload --port 8000
 ```
 
-### Option 3: Install as Package
+### Option 3: Docker
 
 ```bash
-# Basic install
-pip install -e .
-
-# With development tools
-pip install -e ".[dev]"
-
-# With Redis support
-pip install -e ".[redis]"
-```
-
----
-
-## 🐳 Docker
-
-### Quick Start with Docker Compose
-
-```bash
-# Production (API + Redis + Nginx Frontend)
 docker-compose up -d
-
-# Development (with hot reload)
-docker-compose --profile dev up api-dev
-
-# View logs
-docker-compose logs -f api
-
-# Stop all services
-docker-compose down
 ```
 
-### Services
+### 🌐 Access Points
 
-| Service | Port | Description |
-|---------|------|-------------|
-| `api` | 8000 | FastAPI backend |
-| `redis` | 6379 | Cache (optional) |
-| `frontend` | 3000 | Nginx frontend |
-
-### Docker Commands
-
-```bash
-# Build image only
-docker build -t clv-prediction .
-
-# Run standalone container
-docker run -p 8000:8000 clv-prediction
-
-# Development build
-docker build --target development -t clv-prediction:dev .
-```
+| URL | Description |
+|-----|-------------|
+| http://localhost:8000 | Dashboard UI |
+| http://localhost:8000/api/docs | Swagger API Docs |
+| http://localhost:8000/api/redoc | ReDoc API Docs |
+| http://localhost:8000/api/health | Health Check |
 
 ---
 
-## 📁 Project Structure
+## ✨ Features
 
-```
-clv/
-├── backend/                    # Python API & ML
-│   ├── config.py              # Configuration management
-│   ├── logging_config.py      # Structured logging
-│   ├── exceptions.py          # Custom exceptions
-│   ├── cache.py               # LRU/Redis caching
-│   ├── schemas.py             # Pydantic validation
-│   ├── middleware.py          # Rate limiting, security
-│   ├── dependencies.py        # Dependency injection
-│   ├── data_processor.py      # Data cleaning
-│   ├── feature_engineering.py # RFM features
-│   ├── ml_models.py           # Base ML models
-│   ├── ml_models_enhanced.py  # Enhanced ML + registry
-│   ├── clv_predictor.py       # Prediction pipeline
-│   ├── meta_ads_integration.py# Meta Ads optimization
-│   ├── api.py                 # Basic API
-│   └── api_enhanced.py        # Production API
-├── frontend/                   # Dashboard UI
-│   ├── index.html
-│   ├── css/styles.css
-│   └── js/app.js
-├── data/
-│   ├── generate_data.py       # Data generator
-│   └── customers.csv          # Sample dataset
-├── scripts/                    # Training scripts
-│   ├── train_models.py        # MLflow-tracked training
-│   └── evaluate_models.py     # Model evaluation
-├── deploy/                     # Deployment configs
-│   ├── EC2_DEPLOYMENT_GUIDE.md
-│   ├── ec2-setup.sh
-│   ├── deploy.sh
-│   ├── docker-compose.prod.yml
-│   └── nginx.prod.conf
-├── .github/workflows/          # CI/CD
-│   ├── ci.yml                 # Test & build
-│   └── deploy.yml             # EC2 deployment
-├── .dvc/                       # DVC config
-│   └── config                 # S3 remote
-├── tests/
-│   └── test_clv.py            # Unit tests
-├── dvc.yaml                   # DVC pipeline
-├── params.yaml                # Training params
-├── Dockerfile                 # Multi-stage Docker
-├── docker-compose.yml         # Container orchestration
-├── nginx.conf                 # Frontend proxy
-├── pyproject.toml             # Modern Python config
-├── setup.py                   # Legacy packaging
-├── setup.bat                  # Windows setup
-├── setup.sh                   # Unix setup
-├── requirements.txt           # Dependencies
-├── .env.example               # Environment template
-├── .env.production.example    # Production env
-├── CHANGELOG.md               # Version history
-└── README.md
-```
+### 🤖 Machine Learning Models
+
+| Model | Description |
+|-------|-------------|
+| **XGBoost** | State-of-the-art gradient boosting |
+| **LightGBM** | Fast distributed ML |
+| **Random Forest** | Robust ensemble predictions |
+| **Gradient Boosting** | Captures complex patterns |
+| **Weighted Ensemble** | Combines all models for best accuracy |
+
+### 📊 Feature Engineering (80+ Features)
+
+| Category | Examples |
+|----------|----------|
+| **RFM** | `recency_score`, `frequency_score`, `monetary_score`, `rfm_weighted` |
+| **Behavioral** | `purchase_velocity`, `churn_risk_score`, `customer_maturity` |
+| **Temporal** | `first_purchase_season`, `is_peak_season`, `days_to_major_holiday` |
+| **Interactions** | `source_category_interaction`, `campaign_value_interaction` |
+| **Acquisition** | `cac_efficiency`, `cac_roi`, `source_quality_score` |
+
+### 🎯 Prediction Confidence
+
+| Feature | Description |
+|---------|-------------|
+| **Confidence Intervals** | 90%, 95%, 99% prediction bounds |
+| **Uncertainty Estimation** | Model ensemble variance analysis |
+| **Temporal Validation** | Time-based train/val/test split (70/15/15) |
 
 ---
 
-## ⚙️ Configuration
+## 📡 API Reference
 
-### Environment Variables
-
-Copy `.env.example` to `.env` and customize:
-
-```bash
-# Application
-CLV_ENVIRONMENT=production  # development, staging, production
-CLV_DEBUG=false
-CLV_SECRET_KEY=your-secret-key
-
-# API
-CLV_API_HOST=0.0.0.0
-CLV_API_PORT=8000
-CLV_API_WORKERS=4
-CLV_RATE_LIMIT=100
-
-# Cache
-CLV_CACHE_ENABLED=true
-CLV_CACHE_TYPE=memory  # memory, redis
-CLV_CACHE_TTL=3600
-
-# Logging
-CLV_LOG_LEVEL=INFO
-CLV_LOG_FILE=logs/clv_api.log
-```
-
----
-
-## 🔬 MLOps
-
-### MLflow Integration
-
-Track experiments and manage models:
-
-```bash
-# Set MLflow tracking URI
-export MLFLOW_TRACKING_URI=http://your-mlflow-server:5000
-
-# Train with MLflow logging
-python scripts/train_models.py
-
-# View experiments
-mlflow ui --port 5000
-```
-
-### DVC (Data Version Control)
-
-Version control for data and models with S3 storage:
-
-```bash
-# Initialize DVC (first time only)
-dvc init
-
-# Configure S3 remote
-dvc remote modify s3remote url s3://your-bucket/clv-prediction
-
-# Add data to DVC
-dvc add data/customers.csv
-
-# Push to remote
-dvc push
-
-# Pull data
-dvc pull
-
-# Run full pipeline
-dvc repro
-```
-
-### GitHub Actions CI/CD
-
-Automated workflows trigger on:
-- **Push to main/develop**: Lint → Test → Build Docker → Push to ECR
-- **Release/Manual**: Deploy to EC2
-
-Required GitHub Secrets:
-| Secret | Description |
-|--------|-------------|
-| `AWS_ACCESS_KEY_ID` | AWS IAM access key |
-| `AWS_SECRET_ACCESS_KEY` | AWS IAM secret |
-| `AWS_REGION` | e.g., `us-east-1` |
-| `EC2_HOST` | EC2 public IP |
-| `EC2_SSH_KEY` | SSH private key |
-
----
-
-## 🚀 Deployment
-
-### AWS EC2 Deployment
-
-1. **Launch EC2 Instance** (Ubuntu 22.04, t3.medium+)
-2. **Run setup script:**
-   ```bash
-   scp deploy/ec2-setup.sh ubuntu@your-ec2-ip:~/
-   ssh ubuntu@your-ec2-ip
-   ./ec2-setup.sh
-   ```
-3. **Configure environment:**
-   ```bash
-   cp .env.production.example ~/.env.production
-   nano ~/.env.production  # Add your values
-   ```
-4. **Deploy:**
-   ```bash
-   ./deploy.sh
-   ```
-
-📖 **Full guide:** See [`deploy/EC2_DEPLOYMENT_GUIDE.md`](deploy/EC2_DEPLOYMENT_GUIDE.md)
-
-### Production Docker Compose
-
-```bash
-cd deploy
-docker-compose -f docker-compose.prod.yml up -d
-```
-
-Includes:
-- **clv-app** - FastAPI backend with health checks
-- **nginx** - Reverse proxy with rate limiting
-- **mlflow** (optional) - Self-hosted tracking server
-
----
-
-## 📊 API Documentation
-
-### Base URL
-```
-http://localhost:8000
-```
-
-### Interactive Docs
-- **Swagger UI:** http://localhost:8000/api/docs
-- **ReDoc:** http://localhost:8000/api/redoc
-
-### Endpoints
+### All Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/health` | Health check with component status |
-| GET | `/api/status` | Detailed status + cache stats |
-| GET | `/api/customers` | List customers with pagination |
-| GET | `/api/customers/{id}` | Get single customer |
-| POST | `/api/predict` | Predict CLV for new customer |
-| POST | `/api/predict/batch` | Batch predictions |
-| GET | `/api/segments` | Segment distribution |
-| GET | `/api/metrics` | Model performance metrics |
-| POST | `/api/model/train` | Train/retrain model |
-| GET | `/api/meta-ads/audiences` | Audience segments |
-| GET | `/api/meta-ads/budget-allocation` | Budget recommendations |
-| GET | `/api/dashboard/summary` | Dashboard data |
-| GET | `/api/cache/stats` | Cache statistics |
-| POST | `/api/cache/clear` | Clear cache |
+| `GET` | `/api/health` | Health check with component status |
+| `GET` | `/api/status` | Detailed status + cache stats |
+| `GET` | `/api/customers` | List customers (paginated) |
+| `GET` | `/api/customers/{id}` | Get single customer |
+| `POST` | `/api/predict` | Predict CLV for customer |
+| `POST` | `/api/predict/batch` | Batch predictions |
+| `GET` | `/api/segments` | Segment distribution |
+| `GET` | `/api/metrics` | Model performance metrics |
+| `POST` | `/api/model/train` | Train/retrain model |
+| `GET` | `/api/meta-ads/audiences` | Audience segments |
+| `GET` | `/api/meta-ads/budget-allocation` | Budget recommendations |
+| `GET` | `/api/meta-ads/strategy` | Full Meta Ads strategy |
+| `GET` | `/api/dashboard/summary` | Dashboard data |
+| `GET` | `/api/cache/stats` | Cache statistics |
+| `POST` | `/api/cache/clear` | Clear cache |
 
 ### Example: Predict CLV
 
@@ -436,32 +164,291 @@ curl -X POST "http://localhost:8000/api/predict" \
   }'
 ```
 
-Response:
+**Response:**
 ```json
 {
   "predicted_clv": 892.50,
   "segment": "High-CLV",
   "confidence": "High",
-  "recommended_cac": 267.75,
-  "model_version": "2.0.0",
-  "cached": false
+  "recommended_cac": 267.75
 }
+```
+
+### Example: Get Budget Allocation
+
+```bash
+curl "http://localhost:8000/api/meta-ads/budget-allocation?total_budget=10000"
 ```
 
 ---
 
-## 📱 Meta Ads Integration
+## 🐳 Docker
+
+### Quick Start
+```bash
+# Start all services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f api
+
+# Stop all services
+docker-compose down
+```
+
+### Services
+
+| Service | Port | Description |
+|---------|------|-------------|
+| `api` | 8000 | FastAPI backend |
+| `frontend` | 3000 | Nginx dashboard |
+| `redis` | 6379 | Cache (optional) |
+
+### Build Commands
+```bash
+# Build production image
+docker build -t clv-prediction .
+
+# Build development image
+docker build --target development -t clv-prediction:dev .
+
+# Run standalone
+docker run -p 8000:8000 clv-prediction
+```
+
+---
+
+## 🔬 MLOps
+
+### MLflow (Experiment Tracking)
+
+```bash
+# Set tracking URI (optional - uses local ./mlruns by default)
+export MLFLOW_TRACKING_URI=http://your-mlflow-server:5000
+
+# Train with MLflow logging
+python scripts/train_models.py
+
+# View MLflow UI
+mlflow ui --port 5000
+# Open http://localhost:5000
+```
+
+**What gets logged:**
+- Training parameters (n_estimators, max_depth, etc.)
+- Metrics (RMSE, MAE, R²)
+- Model artifacts
+- Feature importance
+
+### DVC (Data Version Control)
+
+```bash
+# Initialize DVC (first time only)
+dvc init
+
+# Configure S3 remote (edit .dvc/config)
+dvc remote modify s3remote url s3://your-bucket/clv-prediction
+
+# Add data to DVC
+dvc add data/customers.csv
+
+# Push data to remote
+dvc push
+
+# Pull data from remote
+dvc pull
+
+# Run full pipeline
+dvc repro
+```
+
+### GitHub Actions CI/CD
+
+**Workflows:**
+| Workflow | Trigger | Actions |
+|----------|---------|---------|
+| `ci.yml` | Push to main/develop | Lint → Test → Build Docker → Push to ECR |
+| `deploy.yml` | Release/Manual | Deploy to EC2 |
+
+**Required GitHub Secrets:**
+| Secret | Description |
+|--------|-------------|
+| `AWS_ACCESS_KEY_ID` | AWS IAM access key |
+| `AWS_SECRET_ACCESS_KEY` | AWS IAM secret key |
+| `AWS_REGION` | e.g., `us-east-1` |
+| `EC2_HOST` | EC2 public IP address |
+| `EC2_SSH_KEY` | SSH private key (full content) |
+
+---
+
+## ☁️ AWS Deployment
+
+### Prerequisites
+1. AWS Account with ECR and EC2 access
+2. EC2 instance (Ubuntu 22.04, t3.medium+)
+3. GitHub repository with secrets configured
+
+### Quick Deploy (3 Steps)
+
+**Step 1: Setup EC2**
+```bash
+scp deploy/ec2-setup.sh ubuntu@YOUR-EC2-IP:~/
+ssh ubuntu@YOUR-EC2-IP
+chmod +x ec2-setup.sh && ./ec2-setup.sh
+```
+
+**Step 2: Configure Environment**
+```bash
+cp .env.production.example ~/.env.production
+nano ~/.env.production  # Add your values
+```
+
+**Step 3: Deploy**
+```bash
+./deploy.sh
+```
+
+📖 **Full guide:** [deploy/EC2_DEPLOYMENT_GUIDE.md](deploy/EC2_DEPLOYMENT_GUIDE.md)
+
+### Production Docker Compose
+```bash
+cd deploy
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+---
+
+## 🎯 Meta Ads Integration
 
 ### Budget Allocation (3:2:1 Rule)
 
 | Segment | Budget % | CAC Target | Strategy |
 |---------|----------|------------|----------|
-| High-CLV | 50% | 30% of CLV | Value optimization, 1% lookalikes |
-| Growth-Potential | 35% | 30% of CLV | Conversion optimization |
-| Low-CLV | 15% | 30% of CLV | Cost caps, testing only |
+| **High-CLV** | 50% | 30% of CLV | Value optimization, 1% lookalikes |
+| **Growth-Potential** | 35% | 30% of CLV | Conversion optimization |
+| **Low-CLV** | 15% | 30% of CLV | Cost caps, testing only |
+
+### API Usage
 
 ```bash
+# Get audience segments
+curl "http://localhost:8000/api/meta-ads/audiences"
+
+# Get budget allocation
 curl "http://localhost:8000/api/meta-ads/budget-allocation?total_budget=10000"
+
+# Get full strategy
+curl "http://localhost:8000/api/meta-ads/strategy?total_budget=10000"
+```
+
+---
+
+## ⚙️ Configuration
+
+### Environment Variables
+
+Copy `.env.example` to `.env` and configure:
+
+```bash
+# Application
+CLV_ENVIRONMENT=development  # development, staging, production
+CLV_DEBUG=true
+CLV_SECRET_KEY=your-secret-key-here
+
+# API
+CLV_API_HOST=0.0.0.0
+CLV_API_PORT=8000
+CLV_API_WORKERS=4
+CLV_RATE_LIMIT=100
+
+# Cache
+CLV_CACHE_ENABLED=true
+CLV_CACHE_TYPE=memory  # memory, redis
+CLV_CACHE_TTL=3600
+CLV_REDIS_URL=redis://localhost:6379
+
+# Logging
+CLV_LOG_LEVEL=INFO
+CLV_LOG_FILE=logs/clv_api.log
+
+# MLflow (optional)
+MLFLOW_TRACKING_URI=http://localhost:5000
+```
+
+### Training Parameters
+
+Edit `params.yaml`:
+
+```yaml
+train:
+  use_temporal_split: true
+  train_ratio: 0.70
+  val_ratio: 0.15
+  test_ratio: 0.15
+  n_estimators: 100
+  max_depth: 10
+  learning_rate: 0.1
+```
+
+---
+
+## 🧪 Testing
+
+```bash
+# Run all tests
+pytest tests/ -v
+
+# With coverage report
+pytest tests/ --cov=backend --cov-report=html
+
+# Run specific test file
+pytest tests/test_clv.py -v
+```
+
+---
+
+## 📁 Project Structure
+
+```
+clv/
+├── backend/                    # Python API & ML
+│   ├── api.py                 # FastAPI endpoints
+│   ├── clv_predictor.py       # Prediction pipeline
+│   ├── feature_engineering.py # 80+ features
+│   ├── ml_models.py           # XGBoost, LightGBM, RF
+│   ├── mlflow_config.py       # MLflow integration
+│   ├── meta_ads_integration.py# Meta Ads optimization
+│   ├── data_processor.py      # Data cleaning
+│   ├── config.py              # Configuration
+│   ├── cache.py               # LRU/Redis caching
+│   ├── middleware.py          # Rate limiting
+│   └── schemas.py             # Pydantic models
+├── frontend/                   # Dashboard UI
+│   ├── index.html
+│   ├── css/styles.css
+│   └── js/app.js
+├── scripts/                    # Training scripts
+│   ├── train_models.py        # MLflow-tracked training
+│   └── evaluate_models.py     # Model evaluation
+├── deploy/                     # Deployment
+│   ├── EC2_DEPLOYMENT_GUIDE.md
+│   ├── ec2-setup.sh
+│   ├── deploy.sh
+│   ├── docker-compose.prod.yml
+│   └── nginx.prod.conf
+├── .github/workflows/          # CI/CD
+│   ├── ci.yml
+│   └── deploy.yml
+├── .dvc/config                # DVC S3 config
+├── data/                       # Sample data
+├── tests/                      # Unit tests
+├── docker-compose.yml
+├── Dockerfile
+├── dvc.yaml                   # DVC pipeline
+├── params.yaml                # Training params
+├── requirements.txt
+├── setup.bat / setup.sh       # Setup scripts
+└── README.md
 ```
 
 ---
@@ -476,34 +463,17 @@ curl "http://localhost:8000/api/meta-ads/budget-allocation?total_budget=10000"
 
 ---
 
-## 🧪 Testing
+## 👤 Author
 
-```bash
-# Run all tests
-pytest tests/ -v
-
-# With coverage
-pytest tests/ --cov=backend --cov-report=html
-
-# Async tests
-pytest tests/ --asyncio-mode=auto
-```
-
----
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+**Ali Abbass (OTE22)**
+- GitHub: [@OTE22](https://github.com/OTE22)
+- Repository: [customer-lifetime-value](https://github.com/OTE22/customer-lifetime-value)
 
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](LICENSE)
 
 ---
 
