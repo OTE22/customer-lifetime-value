@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <img src="DEMO_AI_CLTV_ANALYZER.gif" alt="CLV Prediction System Demo" width="800">
+  <img src="https://raw.githubusercontent.com/OTE22/customer-lifetime-value/main/DEMO_AI_CLTV_ANALYZER.gif" alt="CLV Prediction System Demo" width="800">
 </p>
 
 ---
