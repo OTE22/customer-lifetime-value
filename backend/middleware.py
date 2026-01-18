@@ -6,7 +6,7 @@ Request logging, rate limiting, and error handling.
 import time
 import uuid
 from datetime import datetime
-from typing import Callable, Dict, Any, Optional
+from typing import Callable, Dict, Any
 from collections import defaultdict
 import asyncio
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -16,10 +16,7 @@ from fastapi import HTTPException
 
 from .config import get_config
 from .logging_config import get_logger, LogMetrics
-from .exceptions import (
-    CLVException, APIError, RateLimitExceededError,
-    format_exception
-)
+from .exceptions import CLVException
 
 logger = get_logger(__name__)
 metrics = LogMetrics(logger)

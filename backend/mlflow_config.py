@@ -317,7 +317,7 @@ def mlflow_track(experiment_name: Optional[str] = None):
             config = MLflowConfig(experiment_name=experiment_name)
             config.setup()
             
-            with config.start_run(run_name=func.__name__) as run:
+            with config.start_run(run_name=func.__name__):
                 result = func(*args, **kwargs)
                 
                 # If result is a dict with metrics, log them

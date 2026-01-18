@@ -6,16 +6,14 @@ Author: Ali Abbass (OTE22)
 """
 
 import pickle
-import json
-import hashlib
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, List, Any, Tuple, Union
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, asdict
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split, cross_val_score, KFold
-from sklearn.preprocessing import StandardScaler, RobustScaler
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import RobustScaler
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.linear_model import Ridge
@@ -37,8 +35,7 @@ except ImportError:
     lgb = None
 
 from .logging_config import get_logger
-from .config import get_config
-from .exceptions import ModelNotTrainedError, ModelTrainingError, ModelPredictionError
+from .exceptions import ModelNotTrainedError
 
 logger = get_logger(__name__)
 
