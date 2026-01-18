@@ -86,9 +86,20 @@ jobs:
       - name: Test Docker image
         run: |
           docker run -d -p 8000:8000 --name clv-test clv-prediction:${{ github.sha }}
-          sleep 10
-          curl -f http://localhost:8000/api/health || exit 1
-          docker stop clv-test
+          # Wait for container to be ready (retry up to 30 times, 2 seconds apart)
+          for i in $(seq 1 30); do
+            if curl -f http://localhost:8000/api/health 2>/dev/null; then
+              echo "Health check passed!"
+              docker stop clv-test
+              exit 0
+            fi
+            echo "Waiting for container... attempt $i/30"
+            sleep 2
+          done
+          echo "Container failed to become healthy. Logs:"
+          docker logs clv-test
+          docker stop clv-test || true
+          exit 1
 
   # Job 4: Build and Push to ECR (only on main)
   push-ecr:
