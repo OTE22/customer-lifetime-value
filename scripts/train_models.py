@@ -69,13 +69,49 @@ def train_models(data_path: str, output_dir: str, params: dict):
     
     logger.info(f"Features: {len(numeric_features)}, Samples: {len(X)}")
     
-    # Split data
-    test_size = params.get('train', {}).get('test_size', 0.2)
-    random_state = params.get('train', {}).get('random_state', 42)
+    # Use temporal split to prevent data leakage
+    use_temporal_split = params.get('train', {}).get('use_temporal_split', True)
     
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=random_state
-    )
+    if use_temporal_split and 'first_purchase_date' in df.columns:
+        logger.info("Using TEMPORAL split (time-based) to prevent data leakage...")
+        
+        # Sort by date
+        df_sorted = df.sort_values('first_purchase_date').reset_index(drop=True)
+        
+        # Get ratios
+        train_ratio = params.get('train', {}).get('train_ratio', 0.70)
+        val_ratio = params.get('train', {}).get('val_ratio', 0.15)
+        
+        n = len(df_sorted)
+        train_end = int(n * train_ratio)
+        val_end = int(n * (train_ratio + val_ratio))
+        
+        # Apply feature engineering to sorted data
+        df_sorted_features = feature_engineer.fit_transform(df_sorted)
+        
+        X_sorted = df_sorted_features[numeric_features].fillna(0)
+        y_sorted = df_sorted_features[target_col]
+        
+        X_train = X_sorted.iloc[:train_end]
+        y_train = y_sorted.iloc[:train_end]
+        X_val = X_sorted.iloc[train_end:val_end]
+        y_val = y_sorted.iloc[train_end:val_end]
+        X_test = X_sorted.iloc[val_end:]
+        y_test = y_sorted.iloc[val_end:]
+        
+        logger.info(f"Temporal split: train={len(X_train)}, val={len(X_val)}, test={len(X_test)}")
+        logger.info(f"Train dates: {df_sorted['first_purchase_date'].iloc[0]} to {df_sorted['first_purchase_date'].iloc[train_end-1]}")
+        logger.info(f"Test dates: {df_sorted['first_purchase_date'].iloc[val_end]} to {df_sorted['first_purchase_date'].iloc[-1]}")
+        
+    else:
+        logger.info("Using RANDOM split...")
+        test_size = params.get('train', {}).get('test_size', 0.2)
+        random_state = params.get('train', {}).get('random_state', 42)
+        
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=test_size, random_state=random_state
+        )
+        X_val, y_val = None, None  # No separate validation set in random mode
     
     # Initialize trainer
     trainer = CLVModelTrainer()

@@ -161,6 +161,70 @@ class DataProcessor:
         
         return X, y
     
+    def temporal_split(
+        self,
+        df: Optional[pd.DataFrame] = None,
+        train_ratio: float = 0.70,
+        val_ratio: float = 0.15,
+        test_ratio: float = 0.15,
+        date_column: str = 'first_purchase_date'
+    ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+        """
+        Split data temporally to prevent future data leakage.
+        
+        Customers are sorted by their first purchase date, then split into
+        train/validation/test sets based on time order. This ensures we never
+        use future customer data to predict past outcomes.
+        
+        Args:
+            df: DataFrame to split. Uses processed_data if not provided.
+            train_ratio: Proportion for training set (default 0.70)
+            val_ratio: Proportion for validation set (default 0.15)
+            test_ratio: Proportion for test set (default 0.15)
+            date_column: Column to sort by for temporal ordering
+            
+        Returns:
+            Tuple of (train_df, val_df, test_df)
+        """
+        df = df.copy() if df is not None else self.processed_data.copy()
+        
+        if df is None:
+            raise ValueError("No data available. Run load_data and clean_data first.")
+        
+        # Validate ratios
+        total = train_ratio + val_ratio + test_ratio
+        if abs(total - 1.0) > 0.01:
+            raise ValueError(f"Ratios must sum to 1.0, got {total}")
+        
+        logger.info(f"Performing temporal split: train={train_ratio}, val={val_ratio}, test={test_ratio}")
+        
+        # Sort by date
+        if date_column in df.columns:
+            df = df.copy()
+            df[date_column] = pd.to_datetime(df[date_column])
+            df_sorted = df.sort_values(date_column).reset_index(drop=True)
+        else:
+            logger.warning(f"Date column '{date_column}' not found. Using random order.")
+            df_sorted = df.sample(frac=1, random_state=42).reset_index(drop=True)
+        
+        n = len(df_sorted)
+        train_end = int(n * train_ratio)
+        val_end = int(n * (train_ratio + val_ratio))
+        
+        train_df = df_sorted.iloc[:train_end].copy()
+        val_df = df_sorted.iloc[train_end:val_end].copy()
+        test_df = df_sorted.iloc[val_end:].copy()
+        
+        logger.info(f"Temporal split: train={len(train_df)}, val={len(val_df)}, test={len(test_df)}")
+        
+        # Log date ranges for verification
+        if date_column in df.columns:
+            logger.info(f"Train date range: {train_df[date_column].min()} to {train_df[date_column].max()}")
+            logger.info(f"Val date range: {val_df[date_column].min()} to {val_df[date_column].max()}")
+            logger.info(f"Test date range: {test_df[date_column].min()} to {test_df[date_column].max()}")
+        
+        return train_df, val_df, test_df
+    
     def get_feature_names(self, X: pd.DataFrame) -> List[str]:
         """Get list of feature names from preprocessed DataFrame."""
         return X.columns.tolist()

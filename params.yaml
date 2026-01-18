@@ -1,11 +1,20 @@
 # DVC and training parameters
 
 train:
+  # Data splitting
+  use_temporal_split: true    # Use time-based split (recommended for CLV)
+  train_ratio: 0.70           # 70% for training
+  val_ratio: 0.15             # 15% for validation
+  test_ratio: 0.15            # 15% for testing
+  
+  # Fallback random split (if temporal not available)
+  test_size: 0.2
+  random_state: 42
+  
+  # Model parameters
   n_estimators: 100
   max_depth: 10
   learning_rate: 0.1
-  test_size: 0.2
-  random_state: 42
   
   # Model-specific params
   random_forest:
