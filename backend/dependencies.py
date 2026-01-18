@@ -3,10 +3,9 @@ Dependency Injection for CLV Prediction System
 FastAPI dependencies for services, caching, and configuration.
 """
 
-from typing import Optional, Generator, AsyncGenerator
+from typing import Optional
 from functools import lru_cache
-from fastapi import Depends, Request, HTTPException, Header
-import asyncio
+from fastapi import Depends, Request, Header
 
 from .config import get_config, CLVConfig
 from .logging_config import get_logger, LoggerFactory
@@ -365,7 +364,7 @@ async def shutdown_event():
     try:
         cache = get_cache()
         cache.clear()
-    except:
+    except Exception:
         pass
     
     # Reset services

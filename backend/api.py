@@ -5,11 +5,11 @@ Enhanced API with middleware, validation, caching, and comprehensive endpoints.
 
 import time
 from datetime import datetime, timedelta
-from typing import Optional, List, Dict, Any
+from typing import Optional
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Query, Path as PathParam, Body, Depends, HTTPException, Request
+from fastapi import FastAPI, Query, Path as PathParam, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,26 +22,24 @@ from .logging_config import get_logger, LogMetrics, LoggerFactory
 from .schemas import (
     CustomerResponse, CustomerListResponse, PredictionRequest, PredictionResponse,
     BatchPredictionRequest, BatchPredictionResponse, SegmentAnalysis, SegmentStats,
-    ModelPerformance, FeatureImportance, BudgetAllocationRequest, BudgetAllocationResponse,
-    MetaAdsStrategy, AudienceSegment, BudgetAllocation, HealthCheck, ComponentHealth,
-    HealthStatus, DashboardResponse, DashboardSummary, ErrorResponse, CacheStats,
+    ModelPerformance, FeatureImportance, BudgetAllocationResponse,
+    BudgetAllocation, HealthCheck, ComponentHealth,
+    HealthStatus, DashboardResponse, CacheStats,
     SegmentType, ConfidenceLevel
 )
 from .exceptions import (
-    CLVException, CustomerNotFoundError, ModelNotTrainedError,
-    ValidationError, format_exception
+    CLVException, CustomerNotFoundError, ModelNotTrainedError
 )
 from .middleware import (
     RequestContextMiddleware, RequestLoggingMiddleware, RateLimitMiddleware,
     ErrorHandlerMiddleware, SecurityHeadersMiddleware
 )
 from .dependencies import (
-    get_config_dependency, get_cache_manager, get_predictor, get_data_processor,
-    get_feature_engineer, get_meta_ads, get_health_checker, get_service_container,
-    PaginationParams, ServiceContainer, startup_event, shutdown_event,
-    get_api_key, require_api_key
+    get_config_dependency, get_cache_manager, get_predictor,
+    get_meta_ads, get_health_checker,
+    PaginationParams, startup_event, shutdown_event
 )
-from .cache import CacheManager, get_cache
+from .cache import CacheManager
 
 # Initialize logger
 logger = get_logger(__name__)

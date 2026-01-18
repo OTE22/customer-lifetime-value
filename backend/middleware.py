@@ -5,8 +5,7 @@ Request logging, rate limiting, and error handling.
 
 import time
 import uuid
-from datetime import datetime
-from typing import Callable, Dict, Any
+from typing import Callable, Dict
 from collections import defaultdict
 import asyncio
 from starlette.middleware.base import BaseHTTPMiddleware

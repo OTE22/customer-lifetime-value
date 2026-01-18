@@ -6,7 +6,6 @@ Handles loading, cleaning, and preprocessing of customer data for CLV prediction
 import pandas as pd
 import numpy as np
 from typing import Tuple, Optional, List
-import json
 import logging
 
 logging.basicConfig(level=logging.INFO)

@@ -5,7 +5,7 @@ Main interface for customer lifetime value predictions.
 
 import pandas as pd
 import numpy as np
-from typing import Optional, Dict, List, Any, Tuple
+from typing import Optional, Dict, Any
 from pathlib import Path
 import logging
 
@@ -377,7 +377,7 @@ class CLVPredictor:
                 try:
                     pred = model.predict(X)[0]
                     model_predictions.append(pred)
-                except:
+                except Exception:
                     pass
         
         # Calculate uncertainty metrics

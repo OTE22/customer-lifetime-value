@@ -4,10 +4,8 @@ Generates audience segments, budget allocation, and Meta Ads optimization recomm
 """
 
 import pandas as pd
-import numpy as np
 from typing import Dict, List, Optional, Any
 from datetime import datetime
-import json
 import logging
 
 logging.basicConfig(level=logging.INFO)
