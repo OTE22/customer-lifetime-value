@@ -1,0 +1,60 @@
+# DVC Pipeline Configuration
+# This file defines the data and model versioning pipeline
+
+stages:
+  # Stage 1: Process raw customer data
+  preprocess:
+    cmd: python -c "from backend.data_processor import DataProcessor; dp = DataProcessor('data/customers.csv'); dp.load_data(); dp.preprocess()"
+    deps:
+      - data/customers.csv
+      - backend/data_processor.py
+    outs:
+      - data/processed/
+    plots:
+      - data/processed/data_stats.json:
+          x: feature
+          y: importance
+
+  # Stage 2: Feature engineering
+  featurize:
+    cmd: python -c "from backend.feature_engineering import AdvancedFeatureEngineer; import pandas as pd; fe = AdvancedFeatureEngineer(); df = pd.read_csv('data/customers.csv'); fe.fit_transform(df).to_csv('data/features/features.csv', index=False)"
+    deps:
+      - data/customers.csv
+      - backend/feature_engineering.py
+    outs:
+      - data/features/
+
+  # Stage 3: Train models
+  train:
+    cmd: python scripts/train_models.py
+    deps:
+      - data/features/
+      - backend/ml_models.py
+      - backend/mlflow_config.py
+    outs:
+      - models/
+    metrics:
+      - metrics/training_metrics.json:
+          cache: false
+    plots:
+      - metrics/feature_importance.json:
+          x: feature
+          y: importance
+
+  # Stage 4: Evaluate models
+  evaluate:
+    cmd: python scripts/evaluate_models.py
+    deps:
+      - models/
+      - data/features/
+    metrics:
+      - metrics/evaluation_metrics.json:
+          cache: false
+
+# Parameters file
+params:
+  - params.yaml:
+      - train.n_estimators
+      - train.max_depth
+      - train.learning_rate
+      - train.test_size

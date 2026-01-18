@@ -1,0 +1,37 @@
+# DVC and training parameters
+
+train:
+  n_estimators: 100
+  max_depth: 10
+  learning_rate: 0.1
+  test_size: 0.2
+  random_state: 42
+  
+  # Model-specific params
+  random_forest:
+    n_estimators: 100
+    max_depth: 10
+    min_samples_split: 5
+    min_samples_leaf: 2
+    
+  xgboost:
+    n_estimators: 100
+    max_depth: 6
+    learning_rate: 0.1
+    subsample: 0.8
+    colsample_bytree: 0.8
+    
+  lightgbm:
+    n_estimators: 100
+    max_depth: -1
+    learning_rate: 0.1
+    num_leaves: 31
+
+preprocess:
+  fillna_strategy: "median"
+  scale_features: true
+  
+feature_engineering:
+  n_rfm_bins: 5
+  include_temporal: true
+  include_behavioral: true

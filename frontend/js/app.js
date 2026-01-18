@@ -69,6 +69,15 @@ function showSection(sectionName) {
     if (targetSection) {
         targetSection.classList.add('active');
 
+        // Show/hide search box based on section
+        const searchBox = document.getElementById('searchBox');
+        if (sectionName === 'customers') {
+            searchBox.style.display = 'flex';
+            document.getElementById('searchInput').value = '';
+        } else {
+            searchBox.style.display = 'none';
+        }
+
         // Load section-specific data
         switch (sectionName) {
             case 'customers':
@@ -87,15 +96,44 @@ function showSection(sectionName) {
 // Event Listeners
 function setupEventListeners() {
     // Refresh button
-    document.getElementById('refreshBtn').addEventListener('click', () => {
-        loadDashboardData();
+    document.getElementById('refreshBtn').addEventListener('click', async () => {
+        const btn = document.getElementById('refreshBtn');
+        btn.disabled = true;
+        btn.textContent = '⏳';
+        showNotification('Refreshing data...', 'info');
+
+        try {
+            // Clear cache first
+            try {
+                await fetch(`${API_BASE_URL}/api/cache/clear`, { method: 'POST' });
+            } catch (e) {
+                console.log('Cache clear not available');
+            }
+
+            // Reload dashboard data
+            await loadDashboardData();
+            showNotification('Dashboard refreshed successfully!', 'success');
+        } catch (error) {
+            showNotification('Failed to refresh data', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '🔄';
+        }
     });
 
     // Segment filter
+    // Segment filter - works with search
     document.getElementById('segmentFilter').addEventListener('change', (e) => {
         currentSegmentFilter = e.target.value;
         currentPage = 1;
-        loadCustomers();
+        const searchTerm = document.getElementById('searchInput').value.trim();
+        if (searchTerm.length > 0) {
+            // Both search and segment filter
+            searchCustomerWithFilter(searchTerm, currentSegmentFilter);
+        } else {
+            // Just segment filter
+            loadCustomers();
+        }
     });
 
     // Pagination
@@ -123,11 +161,26 @@ function setupEventListeners() {
         submitPrediction();
     });
 
-    // Search
+    // Search - works with segment filter
     document.getElementById('searchInput').addEventListener('input', debounce((e) => {
-        // Implement search functionality
-        console.log('Search:', e.target.value);
+        const searchTerm = e.target.value.trim();
+        if (searchTerm.length > 0) {
+            searchCustomerWithFilter(searchTerm, currentSegmentFilter);
+        } else {
+            // No search term - show all customers (with segment filter if selected)
+            loadCustomers();
+        }
     }, 300));
+
+    // Also handle Enter key for search
+    document.getElementById('searchInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            const searchTerm = e.target.value.trim();
+            if (searchTerm.length > 0) {
+                searchCustomer(searchTerm);
+            }
+        }
+    });
 }
 
 // API Health Check
@@ -385,6 +438,119 @@ function renderCustomersTable(customers) {
         `;
         tbody.appendChild(row);
     });
+}
+
+// Search Customer by ID with Segment Filter
+async function searchCustomerWithFilter(searchTerm, segmentFilter = '') {
+    const tbody = document.querySelector('#customersTable tbody');
+    tbody.innerHTML = '<tr><td colspan="7" class="loading">Searching...</td></tr>';
+
+    try {
+        // Try to get specific customer by exact ID first
+        const response = await fetch(`${API_BASE_URL}/api/customers/${encodeURIComponent(searchTerm)}`);
+
+        if (response.ok) {
+            const customer = await response.json();
+            const segment = customer.predicted_segment || customer.customer_segment || '';
+
+            // Check if customer matches segment filter (if specified)
+            if (!segmentFilter || segment === segmentFilter) {
+                renderCustomersTable([customer]);
+                updatePagination(1);
+                showNotification(`Found customer: ${searchTerm}`, 'success');
+            } else {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 40px; color: #f59e0b; font-size: 1.1em;">
+                    <strong>⚠️ Customer "${searchTerm}" Found But Not in ${segmentFilter} Segment</strong>
+                    <br><span style="color: #9ca3af; font-size: 0.9em;">This customer is in the "${segment}" segment.</span>
+                </td></tr>`;
+                updatePagination(0);
+                showNotification(`${searchTerm} is in ${segment}, not ${segmentFilter}`, 'warning');
+            }
+            return;
+        }
+
+        // If not found by exact ID, fetch all and filter client-side
+        let url = `${API_BASE_URL}/api/customers?limit=1000`;
+        if (segmentFilter) {
+            url += `&segment=${encodeURIComponent(segmentFilter)}`;
+        }
+
+        const allResponse = await fetch(url);
+
+        if (allResponse.ok) {
+            const data = await allResponse.json();
+            const filtered = data.customers.filter(c =>
+                c.customer_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (c.acquisition_source && c.acquisition_source.toLowerCase().includes(searchTerm.toLowerCase()))
+            );
+
+            if (filtered.length > 0) {
+                renderCustomersTable(filtered);
+                updatePagination(filtered.length);
+                const msg = segmentFilter
+                    ? `Found ${filtered.length} matching customers in ${segmentFilter}`
+                    : `Found ${filtered.length} matching customers`;
+                showNotification(msg, 'success');
+            } else {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 40px; color: #f59e0b; font-size: 1.1em;">
+                    <strong>⚠️ No Customer ID "${searchTerm}" Found in Customer Directory</strong>
+                    <br><span style="color: #9ca3af; font-size: 0.9em;">Please check the Customer ID and try again.</span>
+                </td></tr>`;
+                updatePagination(0);
+                showNotification(`No Customer ID "${searchTerm}" found in directory`, 'warning');
+            }
+        }
+
+    } catch (error) {
+        console.error('Search failed:', error);
+        tbody.innerHTML = '<tr><td colspan="7" class="loading">Search failed. Please try again.</td></tr>';
+        showNotification('Search failed. Please try again.', 'error');
+    }
+}
+
+// Legacy function - redirects to new one
+async function searchCustomer(searchTerm) {
+    return searchCustomerWithFilter(searchTerm, currentSegmentFilter);
+}
+
+// Show Notification
+function showNotification(message, type = 'info') {
+    // Create notification element if it doesn't exist
+    let notification = document.getElementById('notification');
+    if (!notification) {
+        notification = document.createElement('div');
+        notification.id = 'notification';
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 10000;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            max-width: 400px;
+        `;
+        document.body.appendChild(notification);
+    }
+
+    // Set color based on type
+    const colors = {
+        success: '#10b981',
+        warning: '#f59e0b',
+        error: '#ef4444',
+        info: '#6366f1'
+    };
+    notification.style.backgroundColor = colors[type] || colors.info;
+    notification.textContent = message;
+    notification.style.opacity = '1';
+
+    // Hide after 3 seconds
+    setTimeout(() => {
+        notification.style.opacity = '0';
+    }, 3000);
 }
 
 // Update Pagination

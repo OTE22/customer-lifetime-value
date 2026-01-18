@@ -1,418 +1,895 @@
 """
-FastAPI REST API for CLV Prediction System
-Provides endpoints for predictions, segmentation, and Meta Ads integration.
+Production-Ready FastAPI Application for CLV Prediction System
+Enhanced API with middleware, validation, caching, and comprehensive endpoints.
 """
 
-import os
-import sys
+import time
+from datetime import datetime, timedelta
+from typing import Optional, List, Dict, Any
+from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import List, Optional, Dict, Any
-from datetime import datetime
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, Query, Path as PathParam, Body, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from fastapi.middleware.gzip import GZipMiddleware
 import pandas as pd
 
-# Add backend to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from backend.data_processor import DataProcessor
-from backend.feature_engineering import FeatureEngineer
-from backend.clv_predictor import CLVPredictor
-from backend.meta_ads_integration import MetaAdsIntegration
-
-# Initialize FastAPI app
-app = FastAPI(
-    title="CLV Prediction API",
-    description="Machine Learning API for Customer Lifetime Value Prediction",
-    version="1.0.0",
-    docs_url="/api/docs",
-    redoc_url="/api/redoc"
+from .config import get_config, CLVConfig
+from .logging_config import get_logger, LogMetrics, LoggerFactory
+from .schemas import (
+    CustomerResponse, CustomerListResponse, PredictionRequest, PredictionResponse,
+    BatchPredictionRequest, BatchPredictionResponse, SegmentAnalysis, SegmentStats,
+    ModelPerformance, FeatureImportance, BudgetAllocationRequest, BudgetAllocationResponse,
+    MetaAdsStrategy, AudienceSegment, BudgetAllocation, HealthCheck, ComponentHealth,
+    HealthStatus, DashboardResponse, DashboardSummary, ErrorResponse, CacheStats,
+    SegmentType, ConfidenceLevel
 )
-
-# CORS middleware for frontend
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+from .exceptions import (
+    CLVException, CustomerNotFoundError, ModelNotTrainedError,
+    ValidationError, format_exception
 )
+from .middleware import (
+    RequestContextMiddleware, RequestLoggingMiddleware, RateLimitMiddleware,
+    ErrorHandlerMiddleware, SecurityHeadersMiddleware
+)
+from .dependencies import (
+    get_config_dependency, get_cache_manager, get_predictor, get_data_processor,
+    get_feature_engineer, get_meta_ads, get_health_checker, get_service_container,
+    PaginationParams, ServiceContainer, startup_event, shutdown_event,
+    get_api_key, require_api_key
+)
+from .cache import CacheManager, get_cache
 
-# Global state
-DATA_PATH = str(Path(__file__).parent.parent / "data" / "customers.csv")
-predictor: Optional[CLVPredictor] = None
-customers_df: Optional[pd.DataFrame] = None
-meta_integration: Optional[MetaAdsIntegration] = None
+# Initialize logger
+logger = get_logger(__name__)
+metrics_logger = LogMetrics(logger)
 
-
-# Pydantic models
-class CustomerPredictionRequest(BaseModel):
-    """Request model for single customer prediction."""
-    total_orders: int = Field(ge=1, description="Number of orders")
-    total_spent: float = Field(ge=0, description="Total amount spent")
-    avg_order_value: float = Field(ge=0, description="Average order value")
-    days_since_first_purchase: int = Field(ge=0, description="Days since first purchase")
-    days_since_last_purchase: int = Field(ge=0, description="Days since last purchase")
-    num_categories: int = Field(ge=1, description="Number of product categories")
-    acquisition_source: str = Field(description="Acquisition source")
-    campaign_type: str = Field(default="None", description="Campaign type")
-    acquisition_cost: float = Field(ge=0, description="Customer acquisition cost")
-    email_engagement_rate: float = Field(ge=0, le=1, description="Email engagement rate")
-    return_rate: float = Field(ge=0, le=1, description="Product return rate")
+# Application start time for uptime tracking
+APP_START_TIME = datetime.utcnow()
 
 
-class PredictionResponse(BaseModel):
-    """Response model for CLV prediction."""
-    predicted_clv: float
-    segment: str
-    confidence: str
-    recommended_cac: float
+# Lifespan context manager
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application startup and shutdown."""
+    await startup_event()
+    yield
+    await shutdown_event()
 
 
-class HealthResponse(BaseModel):
-    """Health check response."""
-    status: str
-    model_trained: bool
-    data_loaded: bool
-    timestamp: str
-
-
-class MetricsResponse(BaseModel):
-    """Model metrics response."""
-    ensemble: Dict[str, float]
-    random_forest: Dict[str, float]
-    gradient_boosting: Dict[str, float]
-    linear: Dict[str, float]
-
-
-# Initialize on startup
-@app.on_event("startup")
-async def startup_event():
-    """Initialize predictor and load data on startup."""
-    global predictor, customers_df, meta_integration
+def create_app(config: Optional[CLVConfig] = None) -> FastAPI:
+    """Factory function to create the FastAPI application."""
     
-    try:
-        # Initialize predictor
-        predictor = CLVPredictor(
-            model_dir=str(Path(__file__).parent.parent / "models"),
-            data_path=DATA_PATH
-        )
-        
-        # Train if data exists
-        if Path(DATA_PATH).exists():
-            print(f"Loading data from {DATA_PATH}")
-            predictor.train(DATA_PATH, save_models=True)
-            
-            # Load data for serving
-            processor = DataProcessor(DATA_PATH)
-            customers_df = processor.load_data()
-            customers_df = processor.clean_data()
-            
-            # Initialize Meta integration
-            meta_integration = MetaAdsIntegration()
-            
-            print("CLV Predictor initialized successfully!")
-        else:
-            print(f"Warning: Data file not found at {DATA_PATH}")
-            
-    except Exception as e:
-        print(f"Error during startup: {e}")
+    if config is None:
+        config = get_config()
+    
+    # Initialize logging
+    LoggerFactory.setup(config.logging)
+    
+    # Create application
+    app = FastAPI(
+        title=config.project_name,
+        version=config.version,
+        description="Production-ready Customer Lifetime Value Prediction API",
+        docs_url="/api/docs",
+        redoc_url="/api/redoc",
+        openapi_url="/api/openapi.json",
+        lifespan=lifespan
+    )
+    
+    # Add middleware (order matters - first added is outermost)
+    app.add_middleware(GZipMiddleware, minimum_size=1000)
+    app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(ErrorHandlerMiddleware)
+    app.add_middleware(RateLimitMiddleware)
+    app.add_middleware(RequestLoggingMiddleware)
+    app.add_middleware(RequestContextMiddleware)
+    
+    # CORS middleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=config.api.cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+        expose_headers=["X-Request-ID", "X-Response-Time-Ms", "X-RateLimit-Remaining"]
+    )
+    
+    return app
 
 
-# API Endpoints
-@app.get("/", tags=["Root"])
-async def root():
-    """Root endpoint."""
-    return {
-        "message": "CLV Prediction API",
-        "version": "1.0.0",
-        "docs": "/api/docs"
-    }
+# Create application instance
+app = create_app()
+
+# Mount static files for frontend
+FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
+if FRONTEND_DIR.exists():
+    # Mount css and js directories at their expected paths
+    css_dir = FRONTEND_DIR / "css"
+    js_dir = FRONTEND_DIR / "js"
+    
+    if css_dir.exists():
+        app.mount("/css", StaticFiles(directory=str(css_dir)), name="css")
+    if js_dir.exists():
+        app.mount("/js", StaticFiles(directory=str(js_dir)), name="js")
+    
+    # Also mount entire frontend for other static assets
+    app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
 
 
-@app.get("/api/health", response_model=HealthResponse, tags=["Health"])
-async def health_check():
-    """Check API health status."""
-    return HealthResponse(
-        status="healthy",
-        model_trained=predictor is not None and predictor.is_trained,
-        data_loaded=customers_df is not None,
-        timestamp=datetime.now().isoformat()
+
+# Root route for frontend
+@app.get("/", include_in_schema=False)
+async def serve_frontend():
+    """Serve the frontend index.html."""
+    index_path = FRONTEND_DIR / "index.html"
+    if index_path.exists():
+        return FileResponse(str(index_path))
+    return JSONResponse(
+        status_code=404,
+        content={"message": "Frontend not found. Place index.html in frontend/ directory."}
     )
 
 
-@app.get("/api/customers", tags=["Customers"])
-async def get_customers(
-    limit: int = Query(default=100, le=1000),
-    offset: int = Query(default=0, ge=0),
-    segment: Optional[str] = None
+@app.get("/index.html", include_in_schema=False)
+async def serve_index():
+    """Serve index.html explicitly."""
+    return await serve_frontend()
+
+
+# =============================================================================
+# Health & Status Endpoints
+# =============================================================================
+
+@app.get(
+    "/api/health",
+    response_model=HealthCheck,
+    tags=["Health"],
+    summary="Health check endpoint"
+)
+async def health_check(
+    checker = Depends(get_health_checker),
+    config: CLVConfig = Depends(get_config_dependency)
 ):
-    """Get list of customers with predictions."""
-    global customers_df, predictor
+    """Check the health status of the API and its components."""
+    health_data = await checker.check_all()
     
-    if customers_df is None:
-        raise HTTPException(status_code=503, detail="Data not loaded")
+    uptime = (datetime.utcnow() - APP_START_TIME).total_seconds()
     
-    df = customers_df.copy()
+    components = [
+        ComponentHealth(
+            name=comp["name"],
+            status=HealthStatus(comp["status"]) if comp["status"] in ["healthy", "degraded", "unhealthy"] else HealthStatus.UNHEALTHY,
+            latency_ms=comp.get("latency_ms"),
+            message=comp.get("message")
+        )
+        for comp in health_data["components"]
+    ]
     
-    # Add predictions
-    if predictor is not None and predictor.is_trained:
-        df = predictor.predict_batch(df)
-    
-    # Filter by segment if provided
-    if segment:
-        segment_col = 'predicted_segment' if 'predicted_segment' in df.columns else 'customer_segment'
-        df = df[df[segment_col] == segment]
-    
-    # Paginate
-    total = len(df)
-    df = df.iloc[offset:offset + limit]
-    
-    # Convert to records
-    records = df.to_dict('records')
+    return HealthCheck(
+        status=HealthStatus(health_data["status"]),
+        timestamp=datetime.utcnow(),
+        version=config.version,
+        uptime_seconds=uptime,
+        components=components
+    )
+
+
+@app.get(
+    "/api/status",
+    tags=["Health"],
+    summary="Detailed status information"
+)
+async def get_status(
+    config: CLVConfig = Depends(get_config_dependency),
+    cache: CacheManager = Depends(get_cache_manager)
+):
+    """Get detailed status information including cache stats."""
+    cache_stats = cache.get_stats()
+    uptime = (datetime.utcnow() - APP_START_TIME).total_seconds()
     
     return {
-        "total": total,
-        "limit": limit,
-        "offset": offset,
-        "customers": records
+        "application": config.project_name,
+        "version": config.version,
+        "environment": config.environment.value,
+        "uptime_seconds": uptime,
+        "uptime_human": str(timedelta(seconds=int(uptime))),
+        "cache": cache_stats,
+        "config": {
+            "rate_limit": config.api.rate_limit_requests,
+            "page_size_max": config.api.max_page_size
+        }
     }
 
 
-@app.get("/api/customers/{customer_id}", tags=["Customers"])
-async def get_customer(customer_id: str):
-    """Get single customer details with prediction."""
-    global customers_df, predictor
-    
-    if customers_df is None:
-        raise HTTPException(status_code=503, detail="Data not loaded")
-    
-    customer = customers_df[customers_df['customer_id'] == customer_id]
-    
-    if customer.empty:
-        raise HTTPException(status_code=404, detail="Customer not found")
-    
-    # Get prediction
-    if predictor is not None and predictor.is_trained:
-        customer = predictor.predict_batch(customer)
-    
-    return customer.iloc[0].to_dict()
+# =============================================================================
+# Customer Endpoints
+# =============================================================================
+
+@app.get(
+    "/api/customers",
+    response_model=CustomerListResponse,
+    tags=["Customers"],
+    summary="List all customers"
+)
+async def list_customers(
+    segment: Optional[str] = Query(None, description="Filter by segment"),
+    source: Optional[str] = Query(None, description="Filter by acquisition source"),
+    min_clv: Optional[float] = Query(None, ge=0, description="Minimum CLV"),
+    max_clv: Optional[float] = Query(None, ge=0, description="Maximum CLV"),
+    sort_by: str = Query("predicted_clv", description="Sort field"),
+    sort_order: str = Query("desc", pattern="^(asc|desc)$", description="Sort order"),
+    pagination: PaginationParams = Depends(),
+    predictor = Depends(get_predictor)
+):
+    """Get paginated list of customers with predictions."""
+    try:
+        if not predictor.is_trained:
+            # Return raw data without predictions
+            processor = predictor.data_processor
+            if processor.raw_data is None:
+                processor.load_data(predictor.data_path)
+            df = processor.raw_data.copy()
+        else:
+            df = predictor.get_all_predictions()
+        
+        # Apply filters
+        if segment and 'predicted_segment' in df.columns:
+            df = df[df['predicted_segment'] == segment]
+        elif segment and 'customer_segment' in df.columns:
+            df = df[df['customer_segment'] == segment]
+        
+        if source and 'acquisition_source' in df.columns:
+            df = df[df['acquisition_source'] == source]
+        
+        clv_col = 'predicted_clv' if 'predicted_clv' in df.columns else 'actual_clv'
+        if min_clv is not None and clv_col in df.columns:
+            df = df[df[clv_col] >= min_clv]
+        if max_clv is not None and clv_col in df.columns:
+            df = df[df[clv_col] <= max_clv]
+        
+        total = len(df)
+        
+        # Sort
+        if sort_by in df.columns:
+            df = df.sort_values(sort_by, ascending=(sort_order == "asc"))
+        
+        # Paginate
+        df_page = df.iloc[pagination.offset:pagination.offset + pagination.limit].copy()
+        
+        # Convert all timestamp columns to strings for JSON serialization
+        for col in df_page.columns:
+            if pd.api.types.is_datetime64_any_dtype(df_page[col]):
+                df_page[col] = df_page[col].astype(str)
+        
+        # Replace NaN values with None for proper JSON serialization
+        df_page = df_page.where(pd.notnull(df_page), None)
+        
+        # Convert to records and clean up any remaining NaN/nan strings
+        customers = df_page.to_dict('records')
+        for customer in customers:
+            for key, value in customer.items():
+                if pd.isna(value) or value == 'nan' or value == 'NaT':
+                    customer[key] = None
+                # Convert None to "None" string for enum fields
+                if key in ['campaign_type', 'acquisition_source'] and customer[key] is None:
+                    customer[key] = "None"
+        
+        return CustomerListResponse(
+            customers=customers,
+            total=total,
+            page=pagination.page,
+            page_size=pagination.page_size,
+            has_more=(pagination.offset + pagination.limit) < total
+        )
+        
+    except Exception as e:
+        logger.error(f"Error listing customers: {e}")
+        raise
 
 
-@app.post("/api/predict", response_model=PredictionResponse, tags=["Predictions"])
-async def predict_clv(request: CustomerPredictionRequest):
-    """Predict CLV for a new customer."""
-    global predictor
-    
-    if predictor is None or not predictor.is_trained:
-        raise HTTPException(status_code=503, detail="Model not trained")
+@app.get(
+    "/api/customers/{customer_id}",
+    response_model=CustomerResponse,
+    tags=["Customers"],
+    summary="Get customer by ID"
+)
+async def get_customer(
+    customer_id: str = PathParam(..., min_length=1, max_length=50),
+    predictor = Depends(get_predictor),
+    cache: CacheManager = Depends(get_cache_manager)
+):
+    """Get detailed customer information with predictions."""
+    # Check cache
+    cached = cache.get_prediction(customer_id)
+    if cached:
+        return CustomerResponse(**cached)
     
     try:
-        customer_data = request.dict()
-        result = predictor.predict_single(customer_data)
+        if not predictor.is_trained:
+            processor = predictor.data_processor
+            if processor.raw_data is None:
+                processor.load_data(predictor.data_path)
+            df = processor.raw_data
+        else:
+            df = predictor.get_all_predictions()
+        
+        customer_data = df[df['customer_id'] == customer_id]
+        
+        if customer_data.empty:
+            raise CustomerNotFoundError(customer_id)
+        
+        # Get customer as dict
+        result = customer_data.iloc[0].to_dict()
+        
+        # Convert timestamps to strings and handle NaN values
+        for key, value in result.items():
+            # Convert Timestamp to string
+            if pd.api.types.is_datetime64_any_dtype(type(value)) or hasattr(value, 'isoformat'):
+                result[key] = str(value)
+            # Convert NaN to None or "None" for enum fields
+            if pd.isna(value) or value == 'nan' or value == 'NaT':
+                if key in ['campaign_type', 'acquisition_source']:
+                    result[key] = "None"
+                else:
+                    result[key] = None
+        
+        # Cache result
+        cache.set_prediction(customer_id, result)
+        
+        return CustomerResponse(**result)
+        
+    except CustomerNotFoundError:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting customer {customer_id}: {e}")
+        raise
+
+
+# =============================================================================
+# Prediction Endpoints
+# =============================================================================
+
+@app.post(
+    "/api/predict",
+    response_model=PredictionResponse,
+    tags=["Predictions"],
+    summary="Predict CLV for a customer"
+)
+async def predict_clv(
+    request: PredictionRequest,
+    predictor = Depends(get_predictor),
+    cache: CacheManager = Depends(get_cache_manager),
+    config: CLVConfig = Depends(get_config_dependency)
+):
+    """Predict Customer Lifetime Value based on features."""
+    start_time = time.time()
+    
+    try:
+        # Create DataFrame from request
+        features = pd.DataFrame([request.model_dump()])
+        
+        # Convert enums to strings
+        features['acquisition_source'] = features['acquisition_source'].apply(
+            lambda x: x.value if hasattr(x, 'value') else x
+        )
+        features['campaign_type'] = features['campaign_type'].apply(
+            lambda x: x.value if hasattr(x, 'value') else x
+        )
+        
+        if not predictor.is_trained:
+            # Train model first
+            logger.info("Training model for first prediction...")
+            predictor.train()
+        
+        # Make prediction
+        prediction = predictor.predict_single(features.iloc[0].to_dict())
+        
+        # Determine confidence
+        clv = prediction['predicted_clv']
+        if clv >= 500:
+            segment = SegmentType.HIGH_CLV
+            confidence = ConfidenceLevel.HIGH
+        elif clv >= 150:
+            segment = SegmentType.GROWTH_POTENTIAL
+            confidence = ConfidenceLevel.MEDIUM
+        else:
+            segment = SegmentType.LOW_CLV
+            confidence = ConfidenceLevel.LOW
+        
+        # Calculate recommended CAC (30% of CLV)
+        recommended_cac = round(clv * 0.3, 2)
+        
+        latency_ms = (time.time() - start_time) * 1000
+        
+        # Log prediction
+        metrics_logger.log_prediction(
+            customer_id="new_customer",
+            predicted_clv=clv,
+            segment=segment.value,
+            latency_ms=latency_ms
+        )
         
         return PredictionResponse(
-            predicted_clv=result['predicted_clv'],
-            segment=result['segment'],
-            confidence=result['confidence'],
-            recommended_cac=result['recommended_cac']
+            predicted_clv=round(clv, 2),
+            segment=segment,
+            confidence=confidence,
+            recommended_cac=recommended_cac,
+            model_version=getattr(predictor, 'model_version', config.version),
+            cached=False
         )
+        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Prediction error: {e}")
+        raise
 
 
-@app.get("/api/segments", tags=["Segments"])
-async def get_segments():
+@app.post(
+    "/api/predict/batch",
+    response_model=BatchPredictionResponse,
+    tags=["Predictions"],
+    summary="Batch predict CLV for multiple customers"
+)
+async def batch_predict(
+    request: BatchPredictionRequest,
+    predictor = Depends(get_predictor)
+):
+    """Predict CLV for multiple customers in batch."""
+    start_time = time.time()
+    
+    try:
+        predictions = []
+        
+        for customer in request.customers:
+            features = pd.DataFrame([customer.model_dump()])
+            
+            # Convert enums
+            features['acquisition_source'] = features['acquisition_source'].apply(
+                lambda x: x.value if hasattr(x, 'value') else x
+            )
+            features['campaign_type'] = features['campaign_type'].apply(
+                lambda x: x.value if hasattr(x, 'value') else x
+            )
+            
+            if not predictor.is_trained:
+                predictor.train()
+            
+            pred = predictor.predict_single(features.iloc[0].to_dict())
+            clv = pred['predicted_clv']
+            
+            if clv >= 500:
+                segment = SegmentType.HIGH_CLV
+                confidence = ConfidenceLevel.HIGH
+            elif clv >= 150:
+                segment = SegmentType.GROWTH_POTENTIAL
+                confidence = ConfidenceLevel.MEDIUM
+            else:
+                segment = SegmentType.LOW_CLV
+                confidence = ConfidenceLevel.LOW
+            
+            predictions.append(PredictionResponse(
+                predicted_clv=round(clv, 2),
+                segment=segment,
+                confidence=confidence,
+                recommended_cac=round(clv * 0.3, 2),
+                cached=False
+            ))
+        
+        processing_time = (time.time() - start_time) * 1000
+        
+        return BatchPredictionResponse(
+            predictions=predictions,
+            total=len(predictions),
+            processing_time_ms=round(processing_time, 2)
+        )
+        
+    except Exception as e:
+        logger.error(f"Batch prediction error: {e}")
+        raise
+
+
+# =============================================================================
+# Segment Endpoints
+# =============================================================================
+
+@app.get(
+    "/api/segments",
+    response_model=SegmentAnalysis,
+    tags=["Segments"],
+    summary="Get segment analysis"
+)
+async def get_segments(
+    predictor = Depends(get_predictor)
+):
     """Get customer segment distribution and statistics."""
-    global customers_df, predictor
-    
-    if customers_df is None:
-        raise HTTPException(status_code=503, detail="Data not loaded")
-    
-    df = customers_df.copy()
-    
-    # Add predictions
-    if predictor is not None and predictor.is_trained:
-        df = predictor.predict_batch(df)
-        summary = predictor.get_segment_summary(df)
-    else:
-        # Use existing segments
-        summary = {}
-        for segment in ['High-CLV', 'Growth-Potential', 'Low-CLV']:
-            segment_df = df[df['customer_segment'] == segment]
-            summary[segment] = {
-                'count': len(segment_df),
-                'percentage': round(len(segment_df) / len(df) * 100, 2),
-                'avg_clv': round(segment_df['actual_clv'].mean(), 2) if 'actual_clv' in segment_df.columns else 0,
-                'total_value': round(segment_df['actual_clv'].sum(), 2) if 'actual_clv' in segment_df.columns else 0
+    try:
+        if not predictor.is_trained:
+            predictor.train()
+        
+        segments_data = predictor.get_segment_analysis()
+        
+        segments = {}
+        total_value = 0
+        total_customers = 0
+        
+        for seg_name, seg_data in segments_data['segments'].items():
+            count = seg_data['count']
+            avg_clv = seg_data.get('avg_predicted_clv', seg_data.get('avg_clv', 0))
+            total_val = seg_data.get('total_predicted_value', seg_data.get('total_value', 0))
+            
+            segments[seg_name] = SegmentStats(
+                count=count,
+                avg_predicted_clv=round(avg_clv, 2),
+                total_predicted_value=round(total_val, 2)
+            )
+            
+            total_value += total_val
+            total_customers += count
+        
+        # Calculate percentages
+        for seg in segments.values():
+            seg.percentage = round((seg.count / total_customers) * 100, 1) if total_customers > 0 else 0
+        
+        return SegmentAnalysis(
+            segments=segments,
+            total_customers=total_customers,
+            total_value=round(total_value, 2)
+        )
+        
+    except Exception as e:
+        logger.error(f"Error getting segments: {e}")
+        raise
+
+
+# =============================================================================
+# Model Endpoints
+# =============================================================================
+
+@app.get(
+    "/api/metrics",
+    response_model=ModelPerformance,
+    tags=["Model"],
+    summary="Get model performance metrics"
+)
+async def get_model_metrics(
+    predictor = Depends(get_predictor),
+    config: CLVConfig = Depends(get_config_dependency)
+):
+    """Get model performance metrics and feature importance."""
+    try:
+        if not predictor.is_trained:
+            raise ModelNotTrainedError()
+        
+        metrics = predictor.get_model_metrics()
+        feature_importance = predictor.get_feature_importance()
+        
+        from .schemas import ModelMetrics
+        
+        return ModelPerformance(
+            model_name="CLVEnsemble",
+            version=config.version,
+            trained_at=getattr(predictor, 'trained_at', None),
+            samples_trained=metrics.get('samples_trained', 0),
+            metrics=ModelMetrics(
+                mae=metrics.get('mae', 0),
+                rmse=metrics.get('rmse', 0),
+                r2=metrics.get('r2', 0)
+            ),
+            feature_importance=[
+                FeatureImportance(
+                    feature=row['feature'],
+                    importance=round(row['importance'], 4),
+                    rank=i + 1
+                )
+                for i, row in feature_importance.head(10).iterrows()
+            ]
+        )
+        
+    except ModelNotTrainedError:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting metrics: {e}")
+        raise
+
+
+@app.post(
+    "/api/model/train",
+    tags=["Model"],
+    summary="Train or retrain the model"
+)
+async def train_model(
+    force: bool = Query(False, description="Force retraining even if model exists"),
+    predictor = Depends(get_predictor)
+):
+    """Train or retrain the CLV prediction model."""
+    try:
+        start_time = time.time()
+        
+        if predictor.is_trained and not force:
+            return {
+                "status": "skipped",
+                "message": "Model already trained. Use force=true to retrain."
             }
-    
-    return {
-        "segments": summary,
-        "total_customers": len(df)
-    }
-
-
-@app.get("/api/metrics", tags=["Metrics"])
-async def get_metrics():
-    """Get model performance metrics."""
-    global predictor
-    
-    if predictor is None or not predictor.is_trained:
-        raise HTTPException(status_code=503, detail="Model not trained")
-    
-    metrics = predictor.get_model_metrics()
-    
-    return {
-        "metrics": metrics,
-        "best_model": "ensemble",
-        "feature_importance": predictor.get_feature_importance()[:10]
-    }
-
-
-@app.get("/api/meta-ads/audiences", tags=["Meta Ads"])
-async def get_meta_audiences():
-    """Get audience segments for Meta Ads targeting."""
-    global customers_df, predictor, meta_integration
-    
-    if customers_df is None:
-        raise HTTPException(status_code=503, detail="Data not loaded")
-    
-    df = customers_df.copy()
-    
-    # Add predictions
-    if predictor is not None and predictor.is_trained:
-        df = predictor.predict_batch(df)
-    
-    # Generate audiences
-    if meta_integration is None:
-        meta_integration = MetaAdsIntegration()
-    
-    meta_integration.set_predictions(df)
-    audiences = meta_integration.generate_audience_segments(df)
-    
-    result = {}
-    for segment, audience_df in audiences.items():
-        result[segment] = {
-            'count': len(audience_df),
-            'avg_predicted_clv': round(audience_df['predicted_clv'].mean(), 2) if 'predicted_clv' in audience_df.columns else 0,
-            'targeting_priority': audience_df['targeting_priority'].iloc[0] if len(audience_df) > 0 else 'Unknown',
-            'lookalike_recommendation': audience_df['lookalike_recommendation'].iloc[0] if len(audience_df) > 0 else 'Unknown',
-            'bidding_strategy': audience_df['bidding_strategy'].iloc[0] if len(audience_df) > 0 else 'Unknown'
+        
+        predictor.train()
+        
+        duration = time.time() - start_time
+        metrics = predictor.get_model_metrics()
+        
+        return {
+            "status": "success",
+            "message": "Model trained successfully",
+            "training_time_seconds": round(duration, 2),
+            "metrics": metrics
         }
-    
-    return {
-        "audiences": result,
-        "lookalike_recommendations": meta_integration.create_lookalike_recommendations()
-    }
+        
+    except Exception as e:
+        logger.error(f"Training error: {e}")
+        raise
 
 
-@app.get("/api/meta-ads/budget-allocation", tags=["Meta Ads"])
+# =============================================================================
+# Meta Ads Endpoints
+# =============================================================================
+
+@app.get(
+    "/api/meta-ads/audiences",
+    tags=["Meta Ads"],
+    summary="Get audience segments for Meta Ads"
+)
+async def get_audiences(
+    meta_ads = Depends(get_meta_ads),
+    predictor = Depends(get_predictor)
+):
+    """Get audience segments optimized for Meta Ads targeting."""
+    try:
+        if not predictor.is_trained:
+            predictor.train()
+        
+        predictions = predictor.get_all_predictions()
+        meta_ads.predictions_df = predictions
+        
+        audiences = meta_ads.generate_audience_segments()
+        
+        return {
+            "audiences": audiences,
+            "total_customers": len(predictions),
+            "recommendations": [
+                "Use High-CLV segment for value-optimized campaigns",
+                "Target Growth-Potential with upsell offers",
+                "Apply cost caps to Low-CLV acquisition"
+            ]
+        }
+        
+    except Exception as e:
+        logger.error(f"Error generating audiences: {e}")
+        raise
+
+
+@app.get(
+    "/api/meta-ads/budget-allocation",
+    response_model=BudgetAllocationResponse,
+    tags=["Meta Ads"],
+    summary="Get budget allocation recommendations"
+)
 async def get_budget_allocation(
-    total_budget: float = Query(default=10000, description="Total advertising budget")
+    total_budget: float = Query(..., gt=0, le=10000000, description="Total marketing budget"),
+    meta_ads = Depends(get_meta_ads),
+    predictor = Depends(get_predictor)
 ):
-    """Get budget allocation recommendations."""
-    global customers_df, predictor, meta_integration
-    
-    if customers_df is None:
-        raise HTTPException(status_code=503, detail="Data not loaded")
-    
-    df = customers_df.copy()
-    
-    # Add predictions
-    if predictor is not None and predictor.is_trained:
-        df = predictor.predict_batch(df)
-    
-    # Generate allocation
-    if meta_integration is None:
-        meta_integration = MetaAdsIntegration()
-    
-    allocation = meta_integration.generate_budget_allocation(total_budget, df)
-    
-    return allocation
+    """Get recommended budget allocation across segments."""
+    try:
+        if not predictor.is_trained:
+            predictor.train()
+        
+        predictions = predictor.get_all_predictions()
+        meta_ads.predictions_df = predictions
+        
+        allocation = meta_ads.generate_budget_allocation(total_budget)
+        
+        return BudgetAllocationResponse(
+            total_budget=total_budget,
+            allocation={
+                seg: BudgetAllocation(
+                    budget=round(data['budget'], 2),
+                    budget_percentage=data['budget_percentage'],
+                    expected_acquisitions=data['expected_acquisitions'],
+                    expected_roas=data['expected_roas'],
+                    optimal_cac=round(data.get('optimal_cac', data['budget'] / max(data['expected_acquisitions'], 1)), 2)
+                )
+                for seg, data in allocation['allocation'].items()
+            },
+            summary=allocation.get('summary', {})
+        )
+        
+    except Exception as e:
+        logger.error(f"Error calculating budget allocation: {e}")
+        raise
 
 
-@app.get("/api/meta-ads/strategy", tags=["Meta Ads"])
-async def get_full_strategy(
-    total_budget: float = Query(default=10000, description="Total advertising budget")
+# =============================================================================
+# Dashboard Endpoints
+# =============================================================================
+
+@app.get(
+    "/api/dashboard/summary",
+    response_model=DashboardResponse,
+    tags=["Dashboard"],
+    summary="Get dashboard summary data"
+)
+async def get_dashboard_summary(
+    predictor = Depends(get_predictor),
+    cache: CacheManager = Depends(get_cache_manager)
 ):
-    """Get complete Meta Ads strategy with all recommendations."""
-    global customers_df, predictor, meta_integration
+    """Get aggregated dashboard data."""
+    # Check cache
+    cached = cache.get("dashboard:summary")
+    if cached:
+        return DashboardResponse(**cached)
     
-    if customers_df is None:
-        raise HTTPException(status_code=503, detail="Data not loaded")
-    
-    df = customers_df.copy()
-    
-    # Add predictions
-    if predictor is not None and predictor.is_trained:
-        df = predictor.predict_batch(df)
-    
-    # Generate full strategy
-    if meta_integration is None:
-        meta_integration = MetaAdsIntegration()
-    
-    strategy = meta_integration.get_full_strategy(total_budget, df)
-    
-    return strategy
+    try:
+        if not predictor.is_trained:
+            predictor.train()
+        
+        df = predictor.get_all_predictions()
+        
+        clv_col = 'predicted_clv' if 'predicted_clv' in df.columns else 'actual_clv'
+        seg_col = 'predicted_segment' if 'predicted_segment' in df.columns else 'customer_segment'
+        
+        # Summary stats
+        total_customers = len(df)
+        avg_clv = df[clv_col].mean() if clv_col in df.columns else 0
+        total_value = df[clv_col].sum() if clv_col in df.columns else 0
+        
+        high_clv_count = len(df[df[seg_col] == 'High-CLV']) if seg_col in df.columns else 0
+        high_clv_pct = (high_clv_count / total_customers * 100) if total_customers > 0 else 0
+        
+        # Segment distribution
+        segments = df[seg_col].value_counts().to_dict() if seg_col in df.columns else {}
+        
+        # Acquisition sources
+        sources = df['acquisition_source'].value_counts().to_dict() if 'acquisition_source' in df.columns else {}
+        
+        # CLV distribution
+        if clv_col in df.columns:
+            clv_dist = {
+                "$0-100": len(df[df[clv_col] < 100]),
+                "$100-250": len(df[(df[clv_col] >= 100) & (df[clv_col] < 250)]),
+                "$250-500": len(df[(df[clv_col] >= 250) & (df[clv_col] < 500)]),
+                "$500-1000": len(df[(df[clv_col] >= 500) & (df[clv_col] < 1000)]),
+                "$1000+": len(df[df[clv_col] >= 1000])
+            }
+        else:
+            clv_dist = {}
+        
+        # Top customers - convert timestamps to strings for JSON serialization
+        if clv_col in df.columns:
+            top_df = df.nlargest(5, clv_col).copy()
+            # Convert all timestamp columns to strings
+            for col in top_df.columns:
+                if pd.api.types.is_datetime64_any_dtype(top_df[col]):
+                    top_df[col] = top_df[col].astype(str)
+            # Replace NaN values with None
+            top_df = top_df.where(pd.notnull(top_df), None)
+            top_customers = top_df.to_dict('records')
+            # Clean up any remaining nan strings and enum fields
+            for customer in top_customers:
+                for key, value in customer.items():
+                    if pd.isna(value) or value == 'nan' or value == 'NaT':
+                        customer[key] = None
+                    # Convert None to "None" string for enum fields
+                    if key in ['campaign_type', 'acquisition_source'] and customer[key] is None:
+                        customer[key] = "None"
+        else:
+            top_customers = []
+        
+        result = {
+            "summary": {
+                "total_customers": total_customers,
+                "avg_clv": round(avg_clv, 2),
+                "total_value": round(total_value, 2),
+                "high_clv_percentage": round(high_clv_pct, 1)
+            },
+            "segments": segments,
+            "acquisition_sources": sources,
+            "clv_distribution": clv_dist,
+            "top_customers": top_customers
+        }
+        
+        # Cache for 5 minutes
+        cache.set("dashboard:summary", result, ttl=300)
+        
+        return DashboardResponse(**result)
+        
+    except Exception as e:
+        logger.error(f"Error getting dashboard: {e}")
+        raise
 
 
-@app.get("/api/dashboard/summary", tags=["Dashboard"])
-async def get_dashboard_summary():
-    """Get summary data for dashboard."""
-    global customers_df, predictor
-    
-    if customers_df is None:
-        raise HTTPException(status_code=503, detail="Data not loaded")
-    
-    df = customers_df.copy()
-    
-    # Add predictions if model is trained
-    if predictor is not None and predictor.is_trained:
-        df = predictor.predict_batch(df)
-        clv_col = 'predicted_clv'
-    else:
-        clv_col = 'actual_clv'
-    
-    # Calculate summary statistics
-    total_customers = len(df)
-    avg_clv = round(df[clv_col].mean(), 2)
-    total_value = round(df[clv_col].sum(), 2)
-    
-    # Segment distribution
-    segment_col = 'predicted_segment' if 'predicted_segment' in df.columns else 'customer_segment'
-    segment_counts = df[segment_col].value_counts().to_dict()
-    
-    # Acquisition source distribution
-    source_counts = df['acquisition_source'].value_counts().to_dict()
-    
-    # CLV distribution
-    clv_bins = [0, 100, 250, 500, 1000, float('inf')]
-    clv_labels = ['$0-100', '$100-250', '$250-500', '$500-1000', '$1000+']
-    df['clv_range'] = pd.cut(df[clv_col], bins=clv_bins, labels=clv_labels)
-    clv_distribution = df['clv_range'].value_counts().to_dict()
-    
-    # Top customers
-    top_customers = df.nlargest(10, clv_col)[['customer_id', clv_col, segment_col, 'total_orders', 'acquisition_source']].to_dict('records')
-    
-    return {
-        "summary": {
-            "total_customers": total_customers,
-            "avg_clv": avg_clv,
-            "total_value": total_value,
-            "high_clv_percentage": round(segment_counts.get('High-CLV', 0) / total_customers * 100, 1)
-        },
-        "segments": segment_counts,
-        "acquisition_sources": source_counts,
-        "clv_distribution": clv_distribution,
-        "top_customers": top_customers
-    }
+# =============================================================================
+# Cache Management Endpoints
+# =============================================================================
+
+@app.get(
+    "/api/cache/stats",
+    response_model=CacheStats,
+    tags=["Admin"],
+    summary="Get cache statistics"
+)
+async def get_cache_stats(
+    cache: CacheManager = Depends(get_cache_manager)
+):
+    """Get current cache statistics."""
+    stats = cache.get_stats()
+    return CacheStats(**stats)
 
 
-# Run with: uvicorn backend.api:app --reload --port 8000
+@app.post(
+    "/api/cache/clear",
+    tags=["Admin"],
+    summary="Clear the cache"
+)
+async def clear_cache(
+    cache: CacheManager = Depends(get_cache_manager)
+):
+    """Clear all cached data."""
+    cache.clear()
+    return {"status": "success", "message": "Cache cleared"}
+
+
+# =============================================================================
+# Error Handlers
+# =============================================================================
+
+@app.exception_handler(CLVException)
+async def clv_exception_handler(request: Request, exc: CLVException):
+    """Handle CLV-specific exceptions."""
+    return JSONResponse(
+        status_code=getattr(exc, 'status_code', 500),
+        content=exc.to_dict()
+    )
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Handle HTTP exceptions."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": True,
+            "error_code": exc.status_code * 10,
+            "message": exc.detail
+        }
+    )
+
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    """Handle unexpected exceptions."""
+    config = get_config()
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": True,
+            "error_code": 5000,
+            "message": str(exc) if config.debug else "Internal server error"
+        }
+    )
+
+
+# Export app for uvicorn
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
+    config = get_config()
+    uvicorn.run(
+        "backend.api_enhanced:app",
+        host=config.api.host,
+        port=config.api.port,
+        reload=config.debug,
+        workers=config.api.workers if not config.debug else 1
+    )

@@ -6,6 +6,10 @@
   <img src="https://img.shields.io/badge/XGBoost-1.7+-red.svg" alt="XGBoost">
   <img src="https://img.shields.io/badge/LightGBM-4.0+-purple.svg" alt="LightGBM">
   <img src="https://img.shields.io/badge/Docker-Ready-blue.svg" alt="Docker">
+  <img src="https://img.shields.io/badge/MLflow-2.10+-orange.svg" alt="MLflow">
+  <img src="https://img.shields.io/badge/DVC-3.30+-9cf.svg" alt="DVC">
+  <img src="https://img.shields.io/badge/GitHub_Actions-CI/CD-2088FF.svg" alt="GitHub Actions">
+  <img src="https://img.shields.io/badge/AWS-EC2_Ready-FF9900.svg" alt="AWS">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License">
 </p>
 
@@ -16,9 +20,10 @@
 <p align="center">
   <a href="#features">Features</a> •
   <a href="#quick-start">Quick Start</a> •
+  <a href="#mlops">MLOps</a> •
   <a href="#docker">Docker</a> •
   <a href="#api-documentation">API Docs</a> •
-  <a href="#meta-ads-integration">Meta Ads</a>
+  <a href="#deployment">Deployment</a>
 </p>
 
 ---
@@ -65,6 +70,12 @@ This CLV Prediction System uses machine learning to forecast customer lifetime v
 - 🛡️ **Rate Limiting** - Token bucket algorithm protection
 - 🔐 **API Key Auth** - Optional authentication support
 - 🐳 **Docker Ready** - Multi-stage build, docker-compose
+
+### MLOps & CI/CD
+- 📊 **MLflow** - Experiment tracking, model registry, artifact storage
+- 📦 **DVC** - Data version control with S3 remote storage
+- 🔄 **GitHub Actions** - Automated CI/CD pipeline
+- ☁️ **AWS EC2** - Production deployment with Nginx
 
 ### Modern Dashboard
 - 📊 Real-time KPI visualization
@@ -210,8 +221,24 @@ clv/
 ├── data/
 │   ├── generate_data.py       # Data generator
 │   └── customers.csv          # Sample dataset
+├── scripts/                    # Training scripts
+│   ├── train_models.py        # MLflow-tracked training
+│   └── evaluate_models.py     # Model evaluation
+├── deploy/                     # Deployment configs
+│   ├── EC2_DEPLOYMENT_GUIDE.md
+│   ├── ec2-setup.sh
+│   ├── deploy.sh
+│   ├── docker-compose.prod.yml
+│   └── nginx.prod.conf
+├── .github/workflows/          # CI/CD
+│   ├── ci.yml                 # Test & build
+│   └── deploy.yml             # EC2 deployment
+├── .dvc/                       # DVC config
+│   └── config                 # S3 remote
 ├── tests/
 │   └── test_clv.py            # Unit tests
+├── dvc.yaml                   # DVC pipeline
+├── params.yaml                # Training params
 ├── Dockerfile                 # Multi-stage Docker
 ├── docker-compose.yml         # Container orchestration
 ├── nginx.conf                 # Frontend proxy
@@ -221,6 +248,7 @@ clv/
 ├── setup.sh                   # Unix setup
 ├── requirements.txt           # Dependencies
 ├── .env.example               # Environment template
+├── .env.production.example    # Production env
 ├── CHANGELOG.md               # Version history
 └── README.md
 ```
@@ -254,6 +282,101 @@ CLV_CACHE_TTL=3600
 CLV_LOG_LEVEL=INFO
 CLV_LOG_FILE=logs/clv_api.log
 ```
+
+---
+
+## 🔬 MLOps
+
+### MLflow Integration
+
+Track experiments and manage models:
+
+```bash
+# Set MLflow tracking URI
+export MLFLOW_TRACKING_URI=http://your-mlflow-server:5000
+
+# Train with MLflow logging
+python scripts/train_models.py
+
+# View experiments
+mlflow ui --port 5000
+```
+
+### DVC (Data Version Control)
+
+Version control for data and models with S3 storage:
+
+```bash
+# Initialize DVC (first time only)
+dvc init
+
+# Configure S3 remote
+dvc remote modify s3remote url s3://your-bucket/clv-prediction
+
+# Add data to DVC
+dvc add data/customers.csv
+
+# Push to remote
+dvc push
+
+# Pull data
+dvc pull
+
+# Run full pipeline
+dvc repro
+```
+
+### GitHub Actions CI/CD
+
+Automated workflows trigger on:
+- **Push to main/develop**: Lint → Test → Build Docker → Push to ECR
+- **Release/Manual**: Deploy to EC2
+
+Required GitHub Secrets:
+| Secret | Description |
+|--------|-------------|
+| `AWS_ACCESS_KEY_ID` | AWS IAM access key |
+| `AWS_SECRET_ACCESS_KEY` | AWS IAM secret |
+| `AWS_REGION` | e.g., `us-east-1` |
+| `EC2_HOST` | EC2 public IP |
+| `EC2_SSH_KEY` | SSH private key |
+
+---
+
+## 🚀 Deployment
+
+### AWS EC2 Deployment
+
+1. **Launch EC2 Instance** (Ubuntu 22.04, t3.medium+)
+2. **Run setup script:**
+   ```bash
+   scp deploy/ec2-setup.sh ubuntu@your-ec2-ip:~/
+   ssh ubuntu@your-ec2-ip
+   ./ec2-setup.sh
+   ```
+3. **Configure environment:**
+   ```bash
+   cp .env.production.example ~/.env.production
+   nano ~/.env.production  # Add your values
+   ```
+4. **Deploy:**
+   ```bash
+   ./deploy.sh
+   ```
+
+📖 **Full guide:** See [`deploy/EC2_DEPLOYMENT_GUIDE.md`](deploy/EC2_DEPLOYMENT_GUIDE.md)
+
+### Production Docker Compose
+
+```bash
+cd deploy
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+Includes:
+- **clv-app** - FastAPI backend with health checks
+- **nginx** - Reverse proxy with rate limiting
+- **mlflow** (optional) - Self-hosted tracking server
 
 ---
 

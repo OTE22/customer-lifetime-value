@@ -1,14 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Customer Lifetime Value Prediction Dashboard - ML-powered CLV analytics for e-commerce">
+    <meta name="description"
+        content="Customer Lifetime Value Prediction Dashboard - ML-powered CLV analytics for e-commerce">
     <title>CLV Prediction Dashboard</title>
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
+
 <body>
     <div class="app-container">
         <!-- Sidebar -->
@@ -56,8 +59,8 @@
                     <p class="header-subtitle">Customer Lifetime Value Analytics</p>
                 </div>
                 <div class="header-right">
-                    <div class="search-box">
-                        <input type="text" placeholder="Search customers..." id="searchInput">
+                    <div class="search-box" id="searchBox" style="display: none;">
+                        <input type="text" placeholder="Search by Customer ID..." id="searchInput" autocomplete="off">
                     </div>
                     <button class="refresh-btn" id="refreshBtn" title="Refresh Data">🔄</button>
                 </div>
@@ -257,7 +260,8 @@
                             </div>
                         </div>
                         <div class="segment-recommendation">
-                            <strong>Strategy:</strong> Cost-efficient retargeting, discount offers, minimal acquisition spend
+                            <strong>Strategy:</strong> Cost-efficient retargeting, discount offers, minimal acquisition
+                            spend
                         </div>
                     </div>
                 </div>
@@ -282,7 +286,7 @@
                         <button id="calculateBudget" class="btn-primary">Calculate</button>
                     </div>
                 </div>
-                
+
                 <div class="budget-allocation">
                     <h3>Budget Allocation (3:2:1 Rule)</h3>
                     <div class="allocation-grid">
@@ -420,7 +424,8 @@
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="emailEngagement">Email Engagement Rate (0-1)</label>
-                                <input type="number" id="emailEngagement" min="0" max="1" step="0.01" value="0.45" required>
+                                <input type="number" id="emailEngagement" min="0" max="1" step="0.01" value="0.45"
+                                    required>
                             </div>
                             <div class="form-group">
                                 <label for="returnRate">Return Rate (0-1)</label>
@@ -429,7 +434,7 @@
                         </div>
                         <button type="submit" class="btn-primary btn-large">🔮 Predict CLV</button>
                     </form>
-                    
+
                     <div id="predictionResult" class="prediction-result hidden">
                         <h3>Prediction Result</h3>
                         <div class="result-grid">
@@ -458,4 +463,5 @@
 
     <script src="js/app.js"></script>
 </body>
+
 </html>

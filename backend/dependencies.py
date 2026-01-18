@@ -155,7 +155,9 @@ class ServiceContainer:
         """Get or create CLV predictor."""
         if self._predictor is None:
             from .clv_predictor import CLVPredictor
-            self._predictor = CLVPredictor()
+            # Use default data path from config
+            data_path = str(self._config.data_path)
+            self._predictor = CLVPredictor(data_path=data_path)
         return self._predictor
     
     @property
@@ -170,7 +172,7 @@ class ServiceContainer:
     def feature_engineer(self):
         """Get or create feature engineer."""
         if self._feature_engineer is None:
-            from .feature_engineering import FeatureEngineer
+            from .feature_engineering import AdvancedFeatureEngineer as FeatureEngineer
             self._feature_engineer = FeatureEngineer()
         return self._feature_engineer
     
@@ -297,7 +299,7 @@ class HealthChecker:
         try:
             start = time.time()
             predictor = self.container.predictor
-            model_status = "healthy" if predictor.model_trained else "degraded"
+            model_status = "healthy" if predictor.is_trained else "degraded"
             if model_status == "degraded":
                 overall_status = "degraded"
             latency = (time.time() - start) * 1000

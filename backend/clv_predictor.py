@@ -10,7 +10,7 @@ from pathlib import Path
 import logging
 
 from .data_processor import DataProcessor
-from .feature_engineering import FeatureEngineer
+from .feature_engineering import AdvancedFeatureEngineer as FeatureEngineer
 from .ml_models import CLVModelTrainer
 
 logging.basicConfig(level=logging.INFO)
@@ -73,7 +73,7 @@ class CLVPredictor:
         df = self.data_processor.clean_data(df)
         
         # Engineer features
-        df_features = self.feature_engineer.prepare_feature_matrix(df)
+        df_features = self.feature_engineer.fit_transform(df)
         
         # Prepare training data
         X, y = self.data_processor.preprocess_for_training(df_features)
@@ -141,7 +141,7 @@ class CLVPredictor:
         df = pd.DataFrame([customer_data])
         
         # Engineer features
-        df_features = self.feature_engineer.prepare_feature_matrix(df)
+        df_features = self.feature_engineer.fit_transform(df)
         
         # Preprocess
         X, _ = self.data_processor.preprocess_for_training(
@@ -187,7 +187,7 @@ class CLVPredictor:
         logger.info(f"Predicting CLV for {len(df)} customers...")
         
         # Engineer features
-        df_features = self.feature_engineer.prepare_feature_matrix(df.copy())
+        df_features = self.feature_engineer.fit_transform(df.copy())
         
         # Preprocess
         target_col = 'actual_clv' if 'actual_clv' in df_features.columns else 'total_spent'
@@ -267,8 +267,43 @@ class CLVPredictor:
         
         return summary
     
-    def get_feature_importance(self) -> List[Dict]:
-        """Get top features driving predictions."""
+    def get_all_predictions(self) -> pd.DataFrame:
+        """
+        Get all customer predictions.
+        
+        Returns:
+            DataFrame with all customers and their predictions.
+        """
+        if not self.is_trained:
+            raise ValueError("Model not trained. Call train() first.")
+        
+        # Load data if not already loaded
+        if self.data_processor.raw_data is None:
+            if self.data_path:
+                self.data_processor.load_data(self.data_path)
+            else:
+                raise ValueError("No data loaded. Provide data_path.")
+        
+        return self.predict_batch(self.data_processor.raw_data)
+    
+    def get_segment_analysis(self) -> Dict[str, Any]:
+        """
+        Get segment analysis with statistics.
+        
+        Returns:
+            Dictionary with segment statistics.
+        """
+        df = self.get_all_predictions()
+        summary = self.get_segment_summary(df)
+        
+        return {
+            'segments': summary,
+            'total_customers': len(df),
+            'total_predicted_value': df['predicted_clv'].sum()
+        }
+    
+    def get_feature_importance(self) -> pd.DataFrame:
+        """Get feature importance as DataFrame."""
         if not self.is_trained:
             raise ValueError("Model not trained. Call train() first.")
         
@@ -277,7 +312,7 @@ class CLVPredictor:
             self.feature_columns
         )
         
-        return importance.head(15).to_dict('records')
+        return importance
     
     def _determine_segment(self, clv: float) -> str:
         """Determine customer segment based on predicted CLV."""
@@ -290,7 +325,6 @@ class CLVPredictor:
     
     def _calculate_confidence(self, prediction: float) -> str:
         """Calculate prediction confidence level."""
-        # Simple confidence based on prediction magnitude
         if prediction > 1000:
             return 'High'
         elif prediction > 300:
@@ -298,7 +332,7 @@ class CLVPredictor:
         else:
             return 'Low'
     
-    def get_model_metrics(self) -> Dict[str, Dict[str, float]]:
+    def get_model_metrics(self) -> Dict[str, Any]:
         """Get all model performance metrics."""
         return self.model_trainer.get_all_metrics()
 

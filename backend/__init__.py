@@ -1,10 +1,12 @@
 """
 Customer Lifetime Value (CLV) Prediction System
 A production-ready ML system for predicting customer lifetime value in e-commerce.
+
+Author: Ali Abbass (OTE22)
 """
 
 __version__ = "2.0.0"
-__author__ = "CLV Prediction Team"
+__author__ = "Ali Abbass (OTE22)"
 
 # Core modules
 from .config import get_config, CLVConfig
@@ -14,11 +16,15 @@ from .cache import get_cache, CacheManager, cached
 
 # Data processing
 from .data_processor import DataProcessor
-from .feature_engineering import FeatureEngineer
+from .feature_engineering import AdvancedFeatureEngineer, engineer_features
 
 # ML models
-from .ml_models import CLVModelTrainer
-from .ml_models_enhanced import EnhancedEnsemble, ModelRegistry
+from .ml_models import (
+    ProductionEnsemble, 
+    XGBoostCLVModel, 
+    LightGBMCLVModel,
+    get_available_models
+)
 
 # Prediction pipeline
 from .clv_predictor import CLVPredictor
@@ -46,11 +52,13 @@ __all__ = [
     "cached",
     # Data
     "DataProcessor",
-    "FeatureEngineer",
+    "AdvancedFeatureEngineer",
+    "engineer_features",
     # Models
-    "CLVModelTrainer",
-    "EnhancedEnsemble",
-    "ModelRegistry",
+    "ProductionEnsemble",
+    "XGBoostCLVModel",
+    "LightGBMCLVModel",
+    "get_available_models",
     # Predictor
     "CLVPredictor",
     # Meta Ads
