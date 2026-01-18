@@ -33,6 +33,12 @@ LABEL maintainer="Ali Abbass <ali.abbass@ote22.dev>"
 LABEL version="2.0.0"
 LABEL description="Customer Lifetime Value Prediction System"
 
+# Install runtime dependencies (libgomp needed by LightGBM)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgomp1 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
