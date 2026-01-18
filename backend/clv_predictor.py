@@ -332,6 +332,113 @@ class CLVPredictor:
         else:
             return 'Low'
     
+    def predict_with_confidence(
+        self,
+        customer_data: Dict[str, Any],
+        confidence_level: float = 0.95
+    ) -> Dict[str, Any]:
+        """
+        Predict CLV with confidence intervals and uncertainty estimation.
+        
+        Uses ensemble variance to estimate prediction uncertainty.
+        
+        Args:
+            customer_data: Dictionary with customer attributes.
+            confidence_level: Confidence level for intervals (0.90, 0.95, 0.99)
+            
+        Returns:
+            Dictionary with prediction, intervals, and uncertainty metrics.
+        """
+        if not self.is_trained:
+            raise ValueError("Model not trained. Call train() first.")
+        
+        # Get base prediction
+        base_result = self.predict_single(customer_data)
+        prediction = base_result['predicted_clv']
+        
+        # Get individual model predictions for variance estimation
+        df = pd.DataFrame([customer_data])
+        df_features = self.feature_engineer.fit_transform(df)
+        
+        target_col = 'actual_clv' if 'actual_clv' in df_features.columns else 'total_spent'
+        X, _ = self.data_processor.preprocess_for_training(df_features, target_column=target_col)
+        
+        # Align columns
+        missing_cols = set(self.feature_columns) - set(X.columns)
+        for col in missing_cols:
+            X[col] = 0
+        X = X[self.feature_columns]
+        
+        # Get predictions from each model
+        model_predictions = []
+        for model_name in ['random_forest', 'gradient_boosting', 'linear']:
+            model = self.model_trainer.models.get(model_name)
+            if model is not None:
+                try:
+                    pred = model.predict(X)[0]
+                    model_predictions.append(pred)
+                except:
+                    pass
+        
+        # Calculate uncertainty metrics
+        if len(model_predictions) >= 2:
+            std_dev = np.std(model_predictions)
+            variance = np.var(model_predictions)
+            
+            # Confidence interval based on model disagreement
+            # Using t-distribution multiplier approximation
+            z_scores = {0.90: 1.645, 0.95: 1.96, 0.99: 2.576}
+            z = z_scores.get(confidence_level, 1.96)
+            
+            margin = z * std_dev
+            lower_bound = max(0, prediction - margin)
+            upper_bound = prediction + margin
+            
+            # Uncertainty score (0-1, lower is more certain)
+            cv = std_dev / abs(prediction) if prediction != 0 else 1
+            uncertainty_score = min(cv, 1.0)
+            
+            # Confidence category based on model agreement
+            if cv < 0.1:
+                confidence_category = 'Very High'
+            elif cv < 0.2:
+                confidence_category = 'High'
+            elif cv < 0.4:
+                confidence_category = 'Medium'
+            else:
+                confidence_category = 'Low'
+            
+        else:
+            # Fallback: estimate based on prediction magnitude
+            std_dev = prediction * 0.25  # 25% default uncertainty
+            lower_bound = max(0, prediction * 0.75)
+            upper_bound = prediction * 1.25
+            uncertainty_score = 0.5
+            confidence_category = 'Medium'
+            variance = std_dev ** 2
+        
+        return {
+            **base_result,
+            'confidence_interval': {
+                'level': confidence_level,
+                'lower': round(float(lower_bound), 2),
+                'upper': round(float(upper_bound), 2),
+                'margin': round(float(upper_bound - prediction), 2)
+            },
+            'uncertainty': {
+                'score': round(float(uncertainty_score), 4),
+                'category': confidence_category,
+                'std_dev': round(float(std_dev), 2),
+                'variance': round(float(variance), 2)
+            },
+            'model_predictions': {
+                'count': len(model_predictions),
+                'min': round(float(min(model_predictions)), 2) if model_predictions else None,
+                'max': round(float(max(model_predictions)), 2) if model_predictions else None,
+                'spread': round(float(max(model_predictions) - min(model_predictions)), 2) if len(model_predictions) >= 2 else None
+            }
+        }
+    
     def get_model_metrics(self) -> Dict[str, Any]:
         """Get all model performance metrics."""
         return self.model_trainer.get_all_metrics()

@@ -709,7 +709,118 @@ class AdvancedFeatureEngineer:
             df['clv_predictor_composite'] = normalized.mean(axis=1)
             self._register_feature('clv_predictor_composite', FeatureCategory.INTERACTION, 'CLV predictor composite score')
         
+        # === ACQUISITION SOURCE × CATEGORY INTERACTIONS ===
+        if 'acquisition_source' in df.columns and 'num_categories' in df.columns:
+            # Encode acquisition source as numeric for interaction
+            source_map = {'Referral': 5, 'Email': 4, 'Organic': 3, 'Direct': 2, 'Meta Ads': 1, 'Google Ads': 1}
+            df['source_numeric'] = df['acquisition_source'].map(source_map).fillna(2)
+            df['source_category_interaction'] = df['source_numeric'] * df['num_categories']
+            self._register_feature('source_category_interaction', FeatureCategory.INTERACTION, 'Acquisition source × category count')
+        
+        # === CAMPAIGN TYPE × VALUE INTERACTIONS ===
+        if 'campaign_type' in df.columns and 'total_spent' in df.columns:
+            campaign_map = {'Retargeting': 3, 'Brand': 2, 'Prospecting': 1, 'None': 0}
+            df['campaign_numeric'] = df['campaign_type'].map(campaign_map).fillna(0)
+            median_spent = df['total_spent'].median()
+            df['campaign_value_interaction'] = df['campaign_numeric'] * (df['total_spent'] / median_spent)
+            self._register_feature('campaign_value_interaction', FeatureCategory.INTERACTION, 'Campaign type × normalized value')
+        
+        # === TIME OF YEAR × BEHAVIOR INTERACTIONS ===
+        if 'first_purchase_quarter' in df.columns and 'total_orders' in df.columns:
+            df['quarter_frequency_interaction'] = df['first_purchase_quarter'] * np.log1p(df['total_orders'])
+            self._register_feature('quarter_frequency_interaction', FeatureCategory.INTERACTION, 'First purchase quarter × frequency')
+        
+        if 'first_purchase_season' in df.columns and 'avg_order_value' in df.columns:
+            median_aov = df['avg_order_value'].median()
+            df['season_value_interaction'] = df['first_purchase_season'] * (df['avg_order_value'] / median_aov)
+            self._register_feature('season_value_interaction', FeatureCategory.INTERACTION, 'Season × AOV')
+        
+        # === ENGAGEMENT × TIMING INTERACTIONS ===
+        if 'email_engagement_rate' in df.columns and 'days_since_last_purchase' in df.columns:
+            # Higher engagement + recent = high score
+            max_recency = df['days_since_last_purchase'].max()
+            recency_inverted = 1 - (df['days_since_last_purchase'] / max_recency) if max_recency > 0 else 0
+            df['engagement_recency_interaction'] = df['email_engagement_rate'] * recency_inverted
+            self._register_feature('engagement_recency_interaction', FeatureCategory.INTERACTION, 'Email engagement × recency')
+        
         logger.info("Interaction features created")
+        return df
+    
+    # =========================================================================
+    # Holiday Proximity Features
+    # =========================================================================
+    
+    def create_holiday_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Create holiday proximity features for seasonal analysis.
+        
+        Features include days to/from major shopping holidays.
+        """
+        df = df.copy()
+        logger.info("Creating holiday proximity features...")
+        
+        # Major US/Global shopping holidays (month, day)
+        holidays = {
+            'new_year': (1, 1),
+            'valentines': (2, 14),
+            'mothers_day': (5, 12),  # 2nd Sunday of May (approx)
+            'fathers_day': (6, 16),  # 3rd Sunday of June (approx)
+            'independence_day': (7, 4),
+            'labor_day': (9, 2),  # 1st Monday of Sept (approx)
+            'halloween': (10, 31),
+            'thanksgiving': (11, 28),  # 4th Thursday of Nov (approx)
+            'black_friday': (11, 29),
+            'cyber_monday': (12, 2),
+            'christmas': (12, 25),
+            'boxing_day': (12, 26),
+        }
+        
+        if 'first_purchase_date' in df.columns:
+            try:
+                first_date = pd.to_datetime(df['first_purchase_date'])
+                
+                for holiday_name, (month, day) in holidays.items():
+                    # Calculate days to this holiday
+                    year = first_date.dt.year
+                    
+                    # Try to create holiday date for same year
+                    holiday_date = pd.to_datetime(dict(year=year, month=month, day=day), errors='coerce')
+                    
+                    # Days difference (can be negative if holiday has passed)
+                    days_diff = (holiday_date - first_date).dt.days
+                    
+                    # Days until holiday (positive only, wrap to next year if passed)
+                    df[f'days_to_{holiday_name}'] = days_diff.apply(
+                        lambda x: x if pd.notna(x) and x >= 0 else (x + 365 if pd.notna(x) else 180)
+                    )
+                    
+                    # Binary: purchased near holiday (within 14 days before)
+                    df[f'near_{holiday_name}'] = ((days_diff >= -14) & (days_diff <= 0)).astype(int)
+                
+                # === AGGREGATE HOLIDAY FEATURES ===
+                
+                # Days to nearest major shopping holiday
+                major_holidays = ['black_friday', 'cyber_monday', 'christmas']
+                major_cols = [f'days_to_{h}' for h in major_holidays if f'days_to_{h}' in df.columns]
+                if major_cols:
+                    df['days_to_major_holiday'] = df[major_cols].min(axis=1)
+                    self._register_feature('days_to_major_holiday', FeatureCategory.TEMPORAL, 'Days to nearest major shopping holiday')
+                
+                # Is peak shopping season (Nov-Dec or near major sale)
+                df['is_peak_season'] = first_date.dt.month.isin([11, 12]).astype(int)
+                self._register_feature('is_peak_season', FeatureCategory.TEMPORAL, 'First purchase in peak season')
+                
+                # Near any holiday
+                near_cols = [col for col in df.columns if col.startswith('near_')]
+                if near_cols:
+                    df['near_any_holiday'] = df[near_cols].max(axis=1)
+                    self._register_feature('near_any_holiday', FeatureCategory.TEMPORAL, 'First purchase near any holiday')
+                
+                logger.info(f"Created {len(holidays)} holiday proximity features")
+                
+            except Exception as e:
+                logger.warning(f"Could not create holiday features: {e}")
+        
         return df
     
     # =========================================================================
@@ -724,7 +835,8 @@ class AdvancedFeatureEngineer:
         include_temporal: bool = True,
         include_statistical: bool = True,
         include_acquisition: bool = True,
-        include_interaction: bool = True
+        include_interaction: bool = True,
+        include_holiday: bool = True
     ) -> pd.DataFrame:
         """
         Apply all feature engineering transformations.
@@ -758,6 +870,9 @@ class AdvancedFeatureEngineer:
         
         if include_interaction:
             result = self.create_interaction_features(result)
+        
+        if include_holiday:
+            result = self.create_holiday_features(result)
         
         # Fill any NaN values
         numeric_cols = result.select_dtypes(include=[np.number]).columns

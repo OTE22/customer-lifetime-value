@@ -56,12 +56,18 @@ This CLV Prediction System uses machine learning to forecast customer lifetime v
 - **Auto-Weighted Ensemble** - Optimal weights based on validation
 - **Model Registry** - Version control and model management
 
-### Advanced Feature Engineering (60+ Features)
-- **RFM Analysis** - Recency, Frequency, Monetary scoring
+### Advanced Feature Engineering (80+ Features)
+- **RFM Analysis** - Recency, Frequency, Monetary scoring with multiple methods
 - **Behavioral Features** - Purchase velocity, engagement, churn risk
 - **Temporal Features** - Seasonality, day-of-week, time thresholds
 - **Statistical Features** - Z-scores, percentiles, outlier detection
-- **Interaction Features** - Value×frequency, engagement×value composites
+- **Interaction Features** - Source×category, campaign×value, time×behavior
+- **Holiday Proximity** - Days to major shopping holidays (Black Friday, Christmas, etc.)
+
+### Prediction Confidence
+- **Uncertainty Estimation** - Model ensemble variance analysis
+- **Confidence Intervals** - 90%, 95%, 99% prediction bounds
+- **Temporal Validation** - Time-based train/val/test split (70/15/15)
 
 ### Production Infrastructure
 - ⚙️ **Configuration Management** - Environment variables, JSON config
