@@ -70,7 +70,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/api/health || exit 1
 
 # Default command
-CMD ["uvicorn", "backend.api_enhanced:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "backend.api:app", "--host", "0.0.0.0", "--port", "8000"]
 
 
 # Stage 3: Development
@@ -94,4 +94,4 @@ RUN pip install --no-cache-dir \
 USER clvuser
 
 # Development command with reload
-CMD ["uvicorn", "backend.api_enhanced:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "backend.api:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
